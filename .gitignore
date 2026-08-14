@@ -1,0 +1,18 @@
+# 构建产物
+bin/
+obj/
+*.user
+*.suo
+
+# 运行时数据（本地数据库，不入库）
+*.db
+*.db-journal
+*.bak
+
+# 日志
+*.log
+
+# OS 垃圾
+Thumbs.db
+Desktop.ini
+.DS_Store
