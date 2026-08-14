@@ -133,7 +133,7 @@ public interface IForegroundScanner : IDisposable {
 ### Task 7: UI（托盘/气泡/统计窗口）
 
 - [x] **Step 1:** `TrayApp.cs`：NotifyIcon + 菜单（查看统计/开机自启勾选/退出）；双击开统计窗
-- [x] **Step 2:** `SceneConfirmBubble.cs`：无边框 TopMost 气泡，显示预填主场景 + 并发标签（可勾选）+「✓是」「✕让我改」（下拉改主场景）；5 分钟 Timer 超时自动确认
+- [x] **Step 2:** `SceneConfirmBubble.cs`：无边框 TopMost 气泡，显示预填主场景 + 并发标签（可勾选）+「✓是」「✕让我改」（下拉改主场景）；10 分钟 Timer 超时自动确认
 - [x] **Step 3:** `StatsWindow.cs` + `Assets/index.html`：ECharts 总览卡片/场景饼图/每日柱状/热力图/明细；明细修改经 `postMessage` ↔ `WebMessageReceived` 写库回刷
 - [x] **Step 4:** 提交 `feat: 托盘气泡与统计窗口`
 
