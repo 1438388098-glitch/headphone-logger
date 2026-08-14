@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using HeadphoneLogger.Core;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
@@ -23,8 +22,7 @@ public sealed class NAudioDeviceMonitor : IAudioDeviceMonitor
     private bool _baselineDone; // 基准状态已记录：之后的事件才对外派发
     private bool _disposed;
 
-    // 发声枚举器复用：每次 new 会产生 RCW + GC 压力，2s 采样下改为复用单例
-    private IMMDeviceEnumerator? _soundingEnumerator;
+    // 发声进程名缓存：NAudio 公共 API 每轮采样新建枚举器，PID→进程名查询是唯一开销较大的环节
     private readonly Dictionary<int, (string Name, DateTime Until)> _pidCache = [];
     private static readonly TimeSpan PidCacheTtl = TimeSpan.FromSeconds(10);
 
@@ -64,76 +62,31 @@ public sealed class NAudioDeviceMonitor : IAudioDeviceMonitor
         var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            // 复用单例枚举器，避免每 2 秒新建 COM 对象（RCW 由 GC 延迟回收，产生 Gen2 压力）
-            _soundingEnumerator ??= (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
-            int hr = _soundingEnumerator.GetDefaultAudioEndpoint((int)DataFlow.Render, (int)Role.Multimedia, out var device);
-            if (hr != 0 || device is null)
-                return result.ToList();
-
-            try
+            // 注意：绝不使用自定义 ComImport 的 MMDeviceEnumeratorComObject（CLSID 与 NAudio 内部类
+            // 相同，CLR 按 CLSID 缓存激活器会导致返回 NAudio 类型、cast 失败、静默永久检测不到声音）。
+            // 统一用 NAudio 公共 API，每轮采样独立实例，避免跨线程复用与 GC 压力。
+            using var enumerator = new MMDeviceEnumerator();
+            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            var sessions = device.AudioSessionManager.Sessions;
+            for (var i = 0; i < sessions.Count; i++)
             {
-                var iid = CoreAudioInterop.IAudioSessionManager2;
-                // Activate 直接 out IAudioSessionManager2，避免 out object + 强转产生双 RCW
-                hr = device.Activate(ref iid, CoreAudioInterop.CLSCTX_ALL, IntPtr.Zero, out var manager);
-                if (hr != 0 || manager is null)
-                    return result.ToList();
-                try
-                {
-                    hr = manager.GetSessionEnumerator(out var sessionEnum);
-                    if (hr != 0 || sessionEnum is null)
-                        return result.ToList();
-                    try
-                    {
-                        if (sessionEnum.GetCount(out var count) != 0)
-                            return result.ToList();
-                        for (var i = 0; i < count; i++)
-                        {
-                            if (sessionEnum.GetSession(i, out var session) != 0 || session is null)
-                                continue;
-                            try
-                            {
-                                if (session.GetState(out var state) == 0 &&
-                                    state == (int)ComAudioSessionState.Active &&
-                                    session.GetProcessId(out var pid) == 0 && pid > 0)
-                                {
-                                    // 排除自身进程（避免把本程序的声音会话算进并发场景）
-                                    if (pid == Environment.ProcessId)
-                                        continue;
-                                    var name = SafeProcessName(pid);
-                                    if (!string.IsNullOrEmpty(name))
-                                        result.Add(name);
-                                }
-                            }
-                            finally
-                            {
-                                Marshal.FinalReleaseComObject(session);
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        Marshal.FinalReleaseComObject(sessionEnum);
-                    }
-                }
-                finally
-                {
-                    Marshal.FinalReleaseComObject(manager);
-                }
-            }
-            finally
-            {
-                Marshal.FinalReleaseComObject(device);
+                var s = sessions[i];
+                if (s.State != AudioSessionState.AudioSessionStateActive)
+                    continue;
+                var pid = (int)s.GetProcessID;
+                if (pid <= 0)
+                    continue;
+                // 排除自身进程（避免把本程序的声音会话算进并发场景）
+                if (pid == Environment.ProcessId)
+                    continue;
+                var name = SafeProcessName(pid);
+                if (!string.IsNullOrEmpty(name))
+                    result.Add(name);
             }
         }
         catch
         {
             // 音频子系统异常绝不外抛：本次采样返回空集合即可
-            // 枚举器可能因设备刷新而失效，重建一次
-            if (_soundingEnumerator is not null)
-            {
-                Marshal.FinalReleaseComObject(_soundingEnumerator);
-                _soundingEnumerator = null;
-            }
         }
         return result.ToList();
     }
@@ -158,18 +111,6 @@ public sealed class NAudioDeviceMonitor : IAudioDeviceMonitor
         _removalDebounceTimer.Stop();
         _removalDebounceTimer.Dispose();
         _enumerator.Dispose();
-        if (_soundingEnumerator is not null)
-        {
-            try
-            {
-                Marshal.FinalReleaseComObject(_soundingEnumerator);
-            }
-            catch
-            {
-                // 枚举器释放失败不影响退出
-            }
-            _soundingEnumerator = null;
-        }
     }
 
     private void OnAudioNotification()
@@ -232,31 +173,14 @@ public sealed class NAudioDeviceMonitor : IAudioDeviceMonitor
         if (_disposed)
             return;
 
-        // 用独立临时枚举器复查（不触碰通知用的共享枚举器，避免跨线程 COM 并发）
+        // 用独立 NAudio 枚举器复查（与发声枚举一致，避免自定义 ComImport 与 NAudio 类冲突）
         DeviceInfo? current = null;
         try
         {
-            var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
-            try
-            {
-                int hr = enumerator.GetDefaultAudioEndpoint((int)DataFlow.Render, (int)Role.Multimedia, out var device);
-                if (hr == 0 && device is not null)
-                {
-                    try
-                    {
-                        if (device.GetId(out var id) == 0)
-                            current = new DeviceInfo(id, id);
-                    }
-                    finally
-                    {
-                        Marshal.FinalReleaseComObject(device);
-                    }
-                }
-            }
-            finally
-            {
-                Marshal.FinalReleaseComObject(enumerator);
-            }
+            using var enumerator = new MMDeviceEnumerator();
+            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            var id = device.ID;
+            current = new DeviceInfo(id, ReadFriendlyName(device) ?? id);
         }
         catch
         {

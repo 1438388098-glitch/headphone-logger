@@ -45,13 +45,7 @@ public sealed class SceneConfirmBubble : Form
         ClientSize = new Size(BubbleWidth, 176);
         BackColor = Color.FromArgb(252, 251, 246); // 米白纸色
 
-        var region = new GraphicsPath();
-        region.AddArc(0, 0, 18, 18, 180, 90);
-        region.AddArc(Width - 18, 0, 18, 18, 270, 90);
-        region.AddArc(Width - 18, Height - 18, 18, 18, 0, 90);
-        region.AddArc(0, Height - 18, 18, 18, 90, 90);
-        Region = new Region(region);
-        region.Dispose();
+        ApplyRoundedRegion();
 
         _titleLabel = new Label
         {
@@ -96,12 +90,10 @@ public sealed class SceneConfirmBubble : Form
             BackColor = Color.Transparent,
         };
 
-        _primaryButton = MakeButton("✓ 是", Color.FromArgb(52, 120, 78), Color.White, ClickedPrimary);
-        _secondaryButton = MakeButton("✕ 让我改", Color.Transparent, Color.FromArgb(80, 80, 80), ClickedSecondary);
-        _laterButton = MakeButton("稍后标", Color.Transparent, Color.FromArgb(150, 120, 60), ClickedLater);
-        _primaryButton.Location = new Point(BubbleWidth - Margin - _primaryButton.Width, 132);
-        _secondaryButton.Location = new Point(_primaryButton.Left - _secondaryButton.Width - 8, 132);
-        _laterButton.Location = new Point(_secondaryButton.Left - _laterButton.Width - 8, 132);
+        _primaryButton = MakeButton("✓ 是", Color.FromArgb(52, 120, 78), Color.White, ClickedPrimary, 80);
+        _secondaryButton = MakeButton("✕ 让我改", Color.Transparent, Color.FromArgb(80, 80, 80), ClickedSecondary, 108);
+        _laterButton = MakeButton("稍后标", Color.Transparent, Color.FromArgb(150, 120, 60), ClickedLater, 88);
+        LayoutButtons();
 
         Controls.AddRange(new Control[] { _titleLabel, _infoLabel, _sceneCombo, _concurrentPanel, _primaryButton, _secondaryButton, _laterButton });
 
@@ -237,6 +229,15 @@ public sealed class SceneConfirmBubble : Form
         _laterButton.Visible = true;
     }
 
+    /// <summary>按钮右对齐排布（固定宽度，从右往左排）。</summary>
+    private void LayoutButtons()
+    {
+        var y = _editMode ? 164 : 132;
+        _primaryButton.Location = new Point(BubbleWidth - Margin - _primaryButton.Width, y);
+        _secondaryButton.Location = new Point(_primaryButton.Left - _secondaryButton.Width - 8, y);
+        _laterButton.Location = new Point(_secondaryButton.Left - _laterButton.Width - 8, y);
+    }
+
     private void LayoutBubble()
     {
         _concurrentPanel.Visible = _concurrentBoxes.Count > 0;
@@ -246,14 +247,31 @@ public sealed class SceneConfirmBubble : Form
         var buttonsY = _editMode ? 164 : 132;
         if (_editMode)
             _sceneCombo.Location = new Point(Margin, 78);
-        _primaryButton.Location = new Point(BubbleWidth - Margin - _primaryButton.Width, buttonsY);
-        _secondaryButton.Location = new Point(_primaryButton.Left - _secondaryButton.Width - 8, buttonsY);
-        _laterButton.Location = new Point(_secondaryButton.Left - _laterButton.Width - 8, buttonsY);
+        LayoutButtons();
 
         var height = _editMode ? 200 : (buttonsY + 36);
         ClientSize = new Size(BubbleWidth, height);
+        // 圆角 Region 必须随大小重建，否则裁剪区域停留在旧尺寸上导致边角错位
+        ApplyRoundedRegion();
         _titleLabel.Top = 16;
         _infoLabel.Top = 48;
+    }
+
+    /// <summary>按当前 ClientSize 重建圆角 Region。</summary>
+    private void ApplyRoundedRegion()
+    {
+        Region?.Dispose();
+        var region = new GraphicsPath();
+        var r = 18;
+        var w = ClientSize.Width;
+        var h = ClientSize.Height;
+        region.AddArc(0, 0, r, r, 180, 90);
+        region.AddArc(w - r, 0, r, r, 270, 90);
+        region.AddArc(w - r, h - r, r, r, 0, 90);
+        region.AddArc(0, h - r, r, r, 90, 90);
+        region.CloseFigure();
+        Region = new Region(region);
+        region.Dispose();
     }
 
     private void PositionNearTray()
@@ -263,14 +281,14 @@ public sealed class SceneConfirmBubble : Form
         Top = area.Bottom - Height - 12;
     }
 
-    private static Button MakeButton(string text, Color back, Color fore, EventHandler onClick)
+    private static Button MakeButton(string text, Color back, Color fore, EventHandler onClick, int width)
     {
         var btn = new Button
         {
             Text = text,
             FlatStyle = FlatStyle.Flat,
-            AutoSize = true,
-            Padding = new Padding(16, 6, 16, 6),
+            Width = width,
+            Height = 34,
             BackColor = back,
             ForeColor = fore,
             Font = new Font("Microsoft YaHei UI", 10f),
