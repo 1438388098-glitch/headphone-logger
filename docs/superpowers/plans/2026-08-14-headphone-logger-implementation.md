@@ -52,10 +52,13 @@ D:\Claudeworkspace\headphone-logger\
 
 ```csharp
 // Audio/IAudioDeviceMonitor.cs
+public sealed record DeviceInfo(string DeviceId, string DeviceName);
+
 public interface IAudioDeviceMonitor : IDisposable {
-    event EventHandler DeviceInserted;
+    event EventHandler<DeviceInfo> DeviceInserted;  // 携带设备 ID + 友好名
     event EventHandler DeviceRemoved;
     bool IsHeadphonesPresent { get; }        // 启动时基准状态
+    DeviceInfo? CurrentDevice { get; }       // 当前默认渲染设备
     IReadOnlyList<string> GetSoundingProcessNames(); // 当前发声进程名集合（小写）
     void Start();
 }
@@ -78,7 +81,7 @@ public interface IForegroundScanner : IDisposable {
 
 ## 数据模型（存储为 UTC ISO8601 文本，聚合按本地日界）
 
-`sessions(id, start_time, end_time, duration_sec)`、`segments(id, session_id, start_time, end_time, duration_sec, app_name, window_title, scene, confirmed, note)`、`segment_scenes(segment_id, scene, PK(segment_id,scene))`、`scene_rules(id, app_pattern, title_pattern, scene, enabled)`。
+`sessions(id, device_id, device_name, start_time, end_time, duration_sec)`、`segments(id, session_id, start_time, end_time, duration_sec, app_name, window_title, scene, confirmed, note)`、`segment_scenes(segment_id, scene, PK(segment_id,scene))`、`scene_rules(id, app_pattern, title_pattern, scene, enabled)`。
 
 时间字符串格式：`"yyyy-MM-dd'T'HH:mm:ss'Z'"`。读取后 `.ToLocalTime()` 聚合。
 
@@ -102,7 +105,7 @@ public interface IForegroundScanner : IDisposable {
 ### Task 3: 存储层
 
 - [ ] **Step 1:** `AppDatabase.cs`：`Open(path)` 建表 + PRAGMA integrity_check 损坏改名 `.bak` 重建；`CreateSession/EndSession/CreateSegment/FinalizeSegment/AddSceneTags/DeleteSession`
-- [ ] **Step 2:** `StatsRepository.cs`：`GetOverview/GetSceneAllocation/GetDailyDurations/GetHourlyHeatmap/GetSegments/UpdateSegment/GetSceneRules`（SQL 见实现）
+- [ ] **Step 2:** `StatsRepository.cs`：`GetOverview/GetSceneAllocation/GetDailyDurations/GetHourlyHeatmap/GetDeviceDurations/GetSegments/UpdateSegment/GetSceneRules`（SQL 见实现）
 - [ ] **Step 3:** `StatsRepositoryTests.cs`：种子数据 → 验证场景重叠计数、本地日界、明细修改
 - [ ] **Step 4:** 跑测试，提交 `feat: SQLite 存储与统计聚合`
 
@@ -117,7 +120,7 @@ public interface IForegroundScanner : IDisposable {
 ### Task 5: AudioWatcher
 
 - [ ] **Step 1:** `CoreAudioInterop.cs` COM 定义（`IMMDeviceEnumerator/IMMDevice/IAudioSessionManager2/IAudioSessionEnumerator/IAudioSessionControl2`）
-- [ ] **Step 2:** `NAudioDeviceMonitor.cs`：IMMNotificationClient 维护渲染端点集合 → Inserted/Removed；GetSoundingProcessNames 枚举默认渲染设备 Active 会话取进程名
+- [ ] **Step 2:** `NAudioDeviceMonitor.cs`：IMMNotificationClient 监听默认渲染端点变化 → Inserted/Removed（携带 DeviceInfo：PropertyStore 取友好名）；GetSoundingProcessNames 枚举默认渲染设备 Active 会话取进程名
 - [ ] **Step 3:** 主项目编译通过（此模块不单测，靠手动冒烟 + 状态机假实现已测）
 - [ ] **Step 4:** 提交 `feat: NAudio 插拔监听与发声进程枚举`
 

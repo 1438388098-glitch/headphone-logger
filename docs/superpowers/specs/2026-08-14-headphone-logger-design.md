@@ -48,7 +48,7 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **AudioWatcher**：只负责监听并上报「耳机插入/拔出」与「当前发声进程集合」。对外暴露 `IAudioDeviceMonitor` 接口（NAudio 为实现之一），使 SessionManager 可脱离硬件测试。
+- **AudioWatcher**：只负责监听并上报「耳机插入/拔出」「当前发声进程集合」与「当前设备标识（ID + 友好名）」。对外暴露 `IAudioDeviceMonitor` 接口（NAudio 为实现之一），使 SessionManager 可脱离硬件测试。
 - **SessionManager**：会话状态机（空闲→使用中→结束），落地数据库；负责所有兜底逻辑。
 - **ForegroundScanner**：取出前台进程名 + 窗口标题，供场景预填。
 - **统计窗口**：只读展示，从数据库聚合计算，含明细修正入口。
@@ -59,9 +59,13 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `id` | INTEGER PK | 自增主键 |
+| `device_id` | TEXT | 音频端点 ID（同一物理设备的稳定标识，蓝牙重配对可能变） |
+| `device_name` | TEXT | 设备友好名（如 `WH-1000XM4 (蓝牙)`，用于展示） |
 | `start_time` | TEXT | 插入时刻（ISO8601 UTC） |
 | `end_time` | TEXT | 拔出时刻，可空（悬挂会话） |
 | `duration_sec` | INTEGER | 总时长，结束或补记时写入 |
+
+**设备识别口径**：默认渲染端点变化即视为「换耳机」。监听 IMMNotificationClient 的增删/默认切换事件，以默认渲染设备 ID 判设备，名称从 PropertyStore 取友好名。蓝牙/USB/3.5mm 各自是一个端点 ID，可区分不同耳机。
 
 ### `segments`（会话内的场景段）
 | 字段 | 类型 | 说明 |
@@ -159,7 +163,8 @@ steam.exe / LeagueClient.exe      → 游戏
 | 场景分配 | 饼图 + 各场景时长表 |
 | 每日时长 | 柱状图，最近 30 天 |
 | 时段分布 | 热力图：一周七天 × 24 小时 |
-| 明细列表 | 按日/场景筛选，每条 segment 可点开补标/改场景/加备注 |
+| 设备时长 | 按 `device_name` 分组的各耳机使用时长（横向条形图 + 表），可与场景/日期维度交叉 |
+| 明细列表 | 按日/场景/设备筛选，每条 segment 可点开补标/改场景/加备注 |
 
 > **改数据链路**：统计窗是 WebView2 内嵌 HTML，明细修正需经双向桥接——前端 `window.chrome.webview.postMessage` → C# `WebMessageReceived` 写 SQLite → 回传刷新。这条桥接是数据流的一部分，实现计划需单独列任务。
 
