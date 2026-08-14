@@ -40,10 +40,10 @@ public sealed class SessionManagerTests : IDisposable
     private void Insert(DeviceInfo? device = null, ForegroundInfo? fg = null)
     {
         _scanner.Current = fg ?? new ForegroundInfo("chrome.exe", "哔哩哔哩 - bilibili");
-        _monitor.RaiseInserted(device ?? new DeviceInfo("dev-1", "WH-1000XM4"));
+        _sm.NotifyDeviceInserted(device ?? new DeviceInfo("dev-1", "WH-1000XM4"));
     }
 
-    private void SwitchTo(ForegroundInfo fg) => _scanner.RaiseChanged(fg);
+    private void SwitchTo(ForegroundInfo fg) => _sm.NotifyForegroundChanged(fg);
 
     private IReadOnlyList<SegmentView> Segments => _db.Stats.GetSegments(new SegmentFilter());
 
@@ -173,7 +173,7 @@ public sealed class SessionManagerTests : IDisposable
     {
         Insert();
         _clock.Advance(TimeSpan.FromHours(2));
-        _monitor.RaiseRemoved();
+        _sm.NotifyDeviceRemoved();
 
         Assert.Equal(SessionState.Idle, _sm.State);
         var seg = Segments.Single();
@@ -186,7 +186,7 @@ public sealed class SessionManagerTests : IDisposable
     {
         Insert();
         _clock.Advance(TimeSpan.FromSeconds(30));
-        _monitor.RaiseRemoved();
+        _sm.NotifyDeviceRemoved();
 
         Assert.Empty(Segments);
         Assert.Equal(0, _db.Stats.GetOverview().TodaySec);
@@ -200,7 +200,7 @@ public sealed class SessionManagerTests : IDisposable
         SwitchTo(new ForegroundInfo("steam.exe", "CS2"));
         _sm.ResolvePendingScene(Scene.Game, new HashSet<Scene> { Scene.Game }, confirmed: true);
         _clock.Advance(TimeSpan.FromSeconds(30));
-        _monitor.RaiseRemoved();
+        _sm.NotifyDeviceRemoved();
 
         Assert.Equal(2, Segments.Count); // 会话保留
     }
@@ -212,7 +212,7 @@ public sealed class SessionManagerTests : IDisposable
         Insert();
         SwitchTo(new ForegroundInfo("steam.exe", "CS2")); // pending
         _clock.Advance(TimeSpan.FromMinutes(2));
-        _monitor.RaiseRemoved();
+        _sm.NotifyDeviceRemoved();
 
         var segs = Segments.OrderBy(s => s.StartTime).ToList();
         Assert.Equal(2, segs.Count);
@@ -224,7 +224,7 @@ public sealed class SessionManagerTests : IDisposable
     public void DoubleInsert_Ignored()
     {
         Insert();
-        _monitor.RaiseInserted(new DeviceInfo("dev-2", "AirPods Max"));
+        _sm.NotifyDeviceInserted(new DeviceInfo("dev-2", "AirPods Max"));
         Assert.Single(Segments); // 不会为第二个设备建会话
         Assert.Equal("WH-1000XM4", _sm.CurrentSession!.DeviceName);
     }

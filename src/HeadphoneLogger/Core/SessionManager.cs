@@ -52,9 +52,6 @@ public sealed class SessionManager : IDisposable
         _rules = rules;
         _scanner = scanner;
         _clock = clock ?? (() => DateTimeOffset.Now);
-        _monitor.DeviceInserted += OnDeviceInserted;
-        _monitor.DeviceRemoved += OnDeviceRemoved;
-        _scanner.ForegroundChanged += OnForegroundChanged;
     }
 
     /// <summary>启动收尾：关闭上次关机/睡眠遗留的悬挂会话。启动时耳机在场不产生新会话（见 spec）。</summary>
@@ -65,15 +62,15 @@ public sealed class SessionManager : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
         _disposed = true;
-        _monitor.DeviceInserted -= OnDeviceInserted;
-        _monitor.DeviceRemoved -= OnDeviceRemoved;
-        _scanner.ForegroundChanged -= OnForegroundChanged;
     }
 
-    private void OnDeviceInserted(object? sender, DeviceInfo device)
+    /// <summary>线程契约：以下 Notify* 方法只在 UI 线程调用（装配层负责从 COM/后台线程串行化过来）。</summary>
+    public void NotifyDeviceInserted(DeviceInfo device) => OnDeviceInserted(device);
+    public void NotifyDeviceRemoved() => OnDeviceRemoved();
+    public void NotifyForegroundChanged(ForegroundInfo foreground) => OnForegroundChanged(foreground);
+
+    private void OnDeviceInserted(DeviceInfo device)
     {
         if (State == SessionState.InSession)
             return; // 抖动/重复事件
@@ -93,7 +90,7 @@ public sealed class SessionManager : IDisposable
         State = SessionState.InSession;
     }
 
-    private void OnDeviceRemoved(object? sender, EventArgs e)
+    private void OnDeviceRemoved()
     {
         if (State != SessionState.InSession)
             return;
@@ -116,19 +113,19 @@ public sealed class SessionManager : IDisposable
         Reset();
     }
 
-    private void OnForegroundChanged(object? sender, ForegroundChangedEventArgs e)
+    private void OnForegroundChanged(ForegroundInfo foreground)
     {
         if (State != SessionState.InSession)
             return;
 
-        var newScene = _rules.Map(e.Foreground.ProcessName, e.Foreground.WindowTitle);
+        var newScene = _rules.Map(foreground.ProcessName, foreground.WindowTitle);
         if (newScene == _currentMainScene)
             return; // 同一场景内的窗口切换不触发
 
         if (_pending is not null)
         {
             // 气泡未决期间再切换：合并覆盖草稿，不重复弹窗；段起点保持最初切换时刻
-            _pending = BuildDraft(e.Foreground, newScene);
+            _pending = BuildDraft(foreground, newScene);
             return;
         }
 
@@ -136,7 +133,7 @@ public sealed class SessionManager : IDisposable
         if (_activeSegment is not null)
             _store.FinalizeSegment(_activeSegment.Id, now);
         _pendingSince = now;
-        _pending = BuildDraft(e.Foreground, newScene);
+        _pending = BuildDraft(foreground, newScene);
         SceneChangeRequested?.Invoke(this, new SceneChangeRequestedEventArgs { Draft = _pending });
     }
 

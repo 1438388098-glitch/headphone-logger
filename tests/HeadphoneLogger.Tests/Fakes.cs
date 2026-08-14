@@ -15,9 +15,6 @@ public sealed class FakeMonitor : IAudioDeviceMonitor
 
     public IReadOnlyList<string> GetSoundingProcessNames() => SoundingProcesses;
 
-    public void RaiseInserted(DeviceInfo d) => DeviceInserted?.Invoke(this, d);
-    public void RaiseRemoved() => DeviceRemoved?.Invoke(this, EventArgs.Empty);
-
     public void Start() { }
     public void Dispose() { }
 }
@@ -27,9 +24,6 @@ public sealed class FakeScanner : IForegroundScanner
 {
     public event EventHandler<ForegroundChangedEventArgs>? ForegroundChanged;
     public ForegroundInfo Current { get; set; } = new(null, null);
-
-    public void RaiseChanged(ForegroundInfo f) =>
-        ForegroundChanged?.Invoke(this, new ForegroundChangedEventArgs { Foreground = f });
 
     public void Start() { }
     public void Dispose() { }
