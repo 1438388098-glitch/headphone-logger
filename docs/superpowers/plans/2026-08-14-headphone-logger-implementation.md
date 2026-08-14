@@ -89,59 +89,59 @@ public interface IForegroundScanner : IDisposable {
 
 ### Task 1: 项目骨架 + 最小测试基建
 
-- [ ] **Step 1:** 创建 `HeadphoneLogger.sln`，`src/HeadphoneLogger`（WinForms `net10.0-windows`）、`tests/HeadphoneLogger.Tests`（xUnit）
-- [ ] **Step 2:** 加包：主项目 `NAudio`、`Microsoft.Data.Sqlite`、`Microsoft.Web.WebView2`；测试项目 `Microsoft.Data.Sqlite`、`Microsoft.NET.Test.Sdk`、`xunit`、`xunit.runner.visualstudio`
-- [ ] **Step 3:** 写 `SmokeTest.cs` 一条真断言测试，`dotnet test` 跑绿
-- [ ] **Step 4:** 写 `README.md`（目标/运行/测试）
-- [ ] **Step 5:** 提交 `chore: 项目骨架与测试基建`
+- [x] **Step 1:** 创建 `HeadphoneLogger.sln`，`src/HeadphoneLogger`（WinForms `net10.0-windows`）、`tests/HeadphoneLogger.Tests`（xUnit）
+- [x] **Step 2:** 加包：主项目 `NAudio`、`Microsoft.Data.Sqlite`、`Microsoft.Web.WebView2`；测试项目 `Microsoft.Data.Sqlite`、`Microsoft.NET.Test.Sdk`、`xunit`、`xunit.runner.visualstudio`
+- [x] **Step 3:** 写 `SmokeTest.cs` 一条真断言测试，`dotnet test` 跑绿
+- [x] **Step 4:** 写 `README.md`（目标/运行/测试）
+- [x] **Step 5:** 提交 `chore: 项目骨架与测试基建`
 
 ### Task 2: 核心模型 + 场景规则引擎
 
-- [ ] **Step 1:** `Scene.cs` 枚举 + `Models.cs`（Session/Segment/SceneDraft/SceneRule）
-- [ ] **Step 2:** `SceneRuleEngine.cs`：按序匹配第一条 enabled 规则，app/title 均为 OrdinalIgnoreCase 子串匹配，title 为空则只按 app；无匹配 → 其他
-- [ ] **Step 3:** `SceneRuleEngineTests.cs`：匹配/优先级/大小写/禁用/兜底
-- [ ] **Step 4:** 跑测试，提交 `feat: 场景枚举与规则引擎`
+- [x] **Step 1:** `Scene.cs` 枚举 + `Models.cs`（Session/Segment/SceneDraft/SceneRule）
+- [x] **Step 2:** `SceneRuleEngine.cs`：按序匹配第一条 enabled 规则，app/title 均为 OrdinalIgnoreCase 子串匹配，title 为空则只按 app；无匹配 → 其他
+- [x] **Step 3:** `SceneRuleEngineTests.cs`：匹配/优先级/大小写/禁用/兜底
+- [x] **Step 4:** 跑测试，提交 `feat: 场景枚举与规则引擎`
 
 ### Task 3: 存储层
 
-- [ ] **Step 1:** `AppDatabase.cs`：`Open(path)` 建表 + PRAGMA integrity_check 损坏改名 `.bak` 重建；`CreateSession/EndSession/CreateSegment/FinalizeSegment/AddSceneTags/DeleteSession`
-- [ ] **Step 2:** `StatsRepository.cs`：`GetOverview/GetSceneAllocation/GetDailyDurations/GetHourlyHeatmap/GetDeviceDurations/GetSegments/UpdateSegment/GetSceneRules`（SQL 见实现）
-- [ ] **Step 3:** `StatsRepositoryTests.cs`：种子数据 → 验证场景重叠计数、本地日界、明细修改
-- [ ] **Step 4:** 跑测试，提交 `feat: SQLite 存储与统计聚合`
+- [x] **Step 1:** `AppDatabase.cs`：`Open(path)` 建表 + PRAGMA integrity_check 损坏改名 `.bak` 重建；`CreateSession/EndSession/CreateSegment/FinalizeSegment/AddSceneTags/DeleteSession`
+- [x] **Step 2:** `StatsRepository.cs`：`GetOverview/GetSceneAllocation/GetDailyDurations/GetHourlyHeatmap/GetDeviceDurations/GetSegments/UpdateSegment/GetSceneRules`（SQL 见实现）
+- [x] **Step 3:** `StatsRepositoryTests.cs`：种子数据 → 验证场景重叠计数、本地日界、明细修改
+- [x] **Step 4:** 跑测试，提交 `feat: SQLite 存储与统计聚合`
 
 ### Task 4: SessionManager 状态机
 
-- [ ] **Step 1:** 实现状态机：插入建会话+首段（confirmed=0 不打扰）；场景切换 → 结束当前段 → 采样发声进程映射并发标签（排除与主场景相同者）→ 抛 `SceneChangeRequested`
-- [ ] **Step 2:** `ResolvePendingScene`：确认/改场景建新段 confirmed=1；超时（由 UI 调起）confirmed=0；pending 期间再切换 → 合并覆盖
-- [ ] **Step 3:** 拔出 → 结束段+会话；<60s 且无已确认段 → 删整会话
-- [ ] **Step 4:** `SessionManagerTests.cs`：假 monitor/假 scanner 驱动全部流转与兜底
-- [ ] **Step 5:** 跑测试，提交 `feat: 会话状态机`
+- [x] **Step 1:** 实现状态机：插入建会话+首段（confirmed=0 不打扰）；场景切换 → 结束当前段 → 采样发声进程映射并发标签（排除与主场景相同者）→ 抛 `SceneChangeRequested`
+- [x] **Step 2:** `ResolvePendingScene`：确认/改场景建新段 confirmed=1；超时（由 UI 调起）confirmed=0；pending 期间再切换 → 合并覆盖
+- [x] **Step 3:** 拔出 → 结束段+会话；<60s 且无已确认段 → 删整会话
+- [x] **Step 4:** `SessionManagerTests.cs`：假 monitor/假 scanner 驱动全部流转与兜底
+- [x] **Step 5:** 跑测试，提交 `feat: 会话状态机`
 
 ### Task 5: AudioWatcher
 
-- [ ] **Step 1:** `CoreAudioInterop.cs` COM 定义（`IMMDeviceEnumerator/IMMDevice/IAudioSessionManager2/IAudioSessionEnumerator/IAudioSessionControl2`）
-- [ ] **Step 2:** `NAudioDeviceMonitor.cs`：IMMNotificationClient 监听默认渲染端点变化 → Inserted/Removed（携带 DeviceInfo：PropertyStore 取友好名）；GetSoundingProcessNames 枚举默认渲染设备 Active 会话取进程名
-- [ ] **Step 3:** 主项目编译通过（此模块不单测，靠手动冒烟 + 状态机假实现已测）
-- [ ] **Step 4:** 提交 `feat: NAudio 插拔监听与发声进程枚举`
+- [x] **Step 1:** `CoreAudioInterop.cs` COM 定义（`IMMDeviceEnumerator/IMMDevice/IAudioSessionManager2/IAudioSessionEnumerator/IAudioSessionControl2`）
+- [x] **Step 2:** `NAudioDeviceMonitor.cs`：IMMNotificationClient 监听默认渲染端点变化 → Inserted/Removed（携带 DeviceInfo：PropertyStore 取友好名）；GetSoundingProcessNames 枚举默认渲染设备 Active 会话取进程名
+- [x] **Step 3:** 主项目编译通过（此模块不单测，靠手动冒烟 + 状态机假实现已测）
+- [x] **Step 4:** 提交 `feat: NAudio 插拔监听与发声进程枚举`
 
 ### Task 6: ForegroundScanner
 
-- [ ] **Step 1:** Win32 `GetForegroundWindow/GetWindowThreadProcessId/GetWindowText`；Timer 1.5s 轮询
-- [ ] **Step 2:** 按规则映射主场景，与当前段主场景比较，跨场景 → 触发事件；同场景仅窗口变 → 不触发
-- [ ] **Step 3:** 提交 `feat: 前台场景扫描`
+- [x] **Step 1:** Win32 `GetForegroundWindow/GetWindowThreadProcessId/GetWindowText`；Timer 1.5s 轮询
+- [x] **Step 2:** 按规则映射主场景，与当前段主场景比较，跨场景 → 触发事件；同场景仅窗口变 → 不触发
+- [x] **Step 3:** 提交 `feat: 前台场景扫描`
 
 ### Task 7: UI（托盘/气泡/统计窗口）
 
-- [ ] **Step 1:** `TrayApp.cs`：NotifyIcon + 菜单（查看统计/开机自启勾选/退出）；双击开统计窗
-- [ ] **Step 2:** `SceneConfirmBubble.cs`：无边框 TopMost 气泡，显示预填主场景 + 并发标签（可勾选）+「✓是」「✕让我改」（下拉改主场景）；5 分钟 Timer 超时自动确认
-- [ ] **Step 3:** `StatsWindow.cs` + `Assets/index.html`：ECharts 总览卡片/场景饼图/每日柱状/热力图/明细；明细修改经 `postMessage` ↔ `WebMessageReceived` 写库回刷
-- [ ] **Step 4:** 提交 `feat: 托盘气泡与统计窗口`
+- [x] **Step 1:** `TrayApp.cs`：NotifyIcon + 菜单（查看统计/开机自启勾选/退出）；双击开统计窗
+- [x] **Step 2:** `SceneConfirmBubble.cs`：无边框 TopMost 气泡，显示预填主场景 + 并发标签（可勾选）+「✓是」「✕让我改」（下拉改主场景）；5 分钟 Timer 超时自动确认
+- [x] **Step 3:** `StatsWindow.cs` + `Assets/index.html`：ECharts 总览卡片/场景饼图/每日柱状/热力图/明细；明细修改经 `postMessage` ↔ `WebMessageReceived` 写库回刷
+- [x] **Step 4:** 提交 `feat: 托盘气泡与统计窗口`
 
 ### Task 8: 应用胶水 + 收尾
 
-- [ ] **Step 1:** `AutoStart.cs` 注册表开关；`Program.cs` Mutex 单实例 + 装配 + 启动扫描器/监听器
-- [ ] **Step 2:** `dotnet build -c Release` + `dotnet test` 全绿
-- [ ] **Step 3:** 提交 `feat: 应用装配与自启`；最终提交 README 收尾
+- [x] **Step 1:** `AutoStart.cs` 注册表开关；`Program.cs` Mutex 单实例 + 装配 + 启动扫描器/监听器
+- [x] **Step 2:** `dotnet build -c Release` + `dotnet test` 全绿
+- [x] **Step 3:** 提交 `feat: 应用装配与自启`；最终提交 README 收尾
 
 ---
 
