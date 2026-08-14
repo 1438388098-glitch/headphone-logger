@@ -287,6 +287,8 @@ public sealed class StatsRepository
         }
     }
 
+    public int GetSessionCount() => LoadSessions().Count;
+
     public IReadOnlyList<string> GetDeviceNames() =>
         LoadSessions()
             .Select(s => string.IsNullOrEmpty(s.DeviceName) ? "未知设备" : s.DeviceName)

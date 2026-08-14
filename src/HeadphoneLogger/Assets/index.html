@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>耳机使用统计</title>
+<script src="echarts.min.js"></script>
+<style>
+  :root { --paper:#fbfaf5; --ink:#2b2b2b; --muted:#8a8a86; --rule:#e4e1d8; --accent:#3a5f8a; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Source Han Serif SC","Songti SC",Georgia,serif; background:var(--paper); color:var(--ink); padding:28px 32px 60px; }
+  h1 { font-size:22px; font-weight:600; letter-spacing:.5px; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:12.5px; margin-bottom:22px; }
+  .cards { display:flex; gap:14px; margin-bottom:24px; flex-wrap:wrap; }
+  .card { background:#fff; border:1px solid var(--rule); border-radius:8px; padding:14px 18px; min-width:168px; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+  .card .k { font-size:12px; color:var(--muted); }
+  .card .v { font-size:22px; font-weight:600; margin-top:4px; }
+  .card .d { font-size:11.5px; margin-top:3px; color:var(--muted); }
+  .up { color:#5a8a5a; } .down { color:#b06050; }
+  .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  .chart { background:#fff; border:1px solid var(--rule); border-radius:8px; padding:14px; }
+  .chart.wide { grid-column:1 / -1; }
+  .chart h3 { font-size:14px; font-weight:600; margin-bottom:10px; }
+  .chart .hint { font-size:11.5px; color:var(--muted); margin-bottom:8px; }
+  .box { height:280px; }
+  .box.tall { height:320px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; background:#fff; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--rule); }
+  th { color:var(--muted); font-weight:600; font-size:11.5px; }
+  tr:hover td { background:#faf7ef; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:9px; font-size:11px; margin-right:4px; background:#eef2f7; color:var(--accent); }
+  .tag.un { background:#f0efea; color:var(--muted); }
+  .btn { border:1px solid var(--rule); background:#fff; color:var(--ink); padding:2px 10px; border-radius:6px; font-size:12px; cursor:pointer; }
+  .btn:hover { border-color:var(--accent); color:var(--accent); }
+  .editbar { display:none; background:#fff; border:1px solid var(--rule); border-radius:8px; padding:12px 16px; margin-bottom:14px; gap:12px; align-items:center; flex-wrap:wrap; }
+  .editbar.visible { display:flex; }
+  .editbar label { font-size:12.5px; color:var(--muted); }
+  select, input[type=text] { font-family:inherit; font-size:12.5px; border:1px solid var(--rule); border-radius:6px; padding:3px 8px; background:#fff; }
+  .editbar .tags { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; }
+  .empty { color:var(--muted); padding:30px; text-align:center; }
+  .foot { color:var(--muted); font-size:11px; margin-top:18px; }
+</style>
+</head>
+<body>
+<h1>耳机使用记录</h1>
+<div class="sub" id="subtitle"></div>
+
+<div class="cards" id="cards"></div>
+
+<div class="chart-grid">
+  <div class="chart"><h3>场景分配</h3><div class="hint" id="sceneHint"></div><div class="box" id="sceneChart"></div></div>
+  <div class="chart"><h3>各耳机使用时长</h3><div class="hint">按会话记录的输出设备分组</div><div class="box" id="deviceChart"></div></div>
+  <div class="chart wide"><h3>每日使用时长（近 30 天）</h3><div class="box tall" id="dailyChart"></div></div>
+  <div class="chart wide"><h3>时段分布（本周 × 24 小时，周一为起始）</h3><div class="box tall" id="heatChart"></div></div>
+</div>
+
+<h3 style="margin-bottom:10px;">明细</h3>
+<div class="editbar" id="editbar">
+  <label>主场景</label><select id="eScene"></select>
+  <div class="tags" id="eScenes"></div>
+  <label>备注</label><input type="text" id="eNote" style="width:150px" maxlength="120">
+  <label><input type="checkbox" id="eConfirmed"> 已确认</label>
+  <button class="btn" id="eSave" style="color:var(--accent)">保存</button>
+  <button class="btn" id="eCancel">取消</button>
+</div>
+<table id="segTable">
+  <thead><tr><th>开始时间</th><th>时长</th><th>场景</th><th>应用 / 标题</th><th>确认</th><th>备注</th><th></th></tr></thead>
+  <tbody></tbody>
+</table>
+<div class="foot" id="foot"></div>
+
+<script>
+const SCENE = { Music:'音乐', Video:'视频', Game:'游戏', Course:'网课', Meeting:'会议', Coding:'编程', Other:'其他', Unmarked:'未标注' };
+const SCENE_KEYS = Object.keys(SCENE);
+let editingId = null;
+
+function fmt(sec) {
+  sec = Math.round(sec || 0);
+  if (sec < 60) return sec + ' 秒';
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+  return (h > 0 ? h + ' 小时 ' : '') + m + ' 分钟';
+}
+function shortDate(s) { const d = new Date(s); return d.toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}); }
+function send(m) { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(JSON.stringify(m)); }
+
+const cards = document.getElementById('cards');
+function renderCards(o) {
+  const items = [
+    {k:'今日', v:fmt(o.todaySec), d:diff(o.todaySec, o.yesterdaySec, '较昨日')},
+    {k:'本周', v:fmt(o.weekSec), d:diff(o.weekSec, o.prevWeekSec, '较上周')},
+    {k:'本月', v:fmt(o.monthSec), d:diff(o.monthSec, o.prevMonthSec, '较上月')},
+  ];
+  cards.innerHTML = items.map(c => `<div class="card"><div class="k">${c.k}</div><div class="v">${c.v}</div><div class="d">${c.d}</div></div>`).join('');
+}
+function diff(cur, prev, label) {
+  if (prev <= 0) return label + ' —';
+  const pct = Math.round((cur - prev) / prev * 100);
+  const cls = pct >= 0 ? 'up' : 'down';
+  const arrow = pct >= 0 ? '↑' : '↓';
+  return `<span class="${cls}">${label} ${arrow}${Math.abs(pct)}%</span>`;
+}
+
+const sceneChart = echarts.init(document.getElementById('sceneChart'));
+const deviceChart = echarts.init(document.getElementById('deviceChart'));
+const dailyChart = echarts.init(document.getElementById('dailyChart'));
+const heatChart = echarts.init(document.getElementById('heatChart'));
+
+function render(data) {
+  renderCards(data.overview);
+  document.getElementById('subtitle').textContent =
+    `会话 ${data.sessionCount} 次 · 覆盖 ${data.deviceCount} 个设备 · 数据更新于 ${new Date().toLocaleTimeString('zh-CN')}`;
+
+  const sa = data.sceneAllocation;
+  document.getElementById('sceneHint').textContent =
+    `总使用 ${fmt(sa.totalSec)}；同一段同时计入多个场景，故各场景之和可能大于总时长。`;
+  sceneChart.setOption({
+    tooltip: { trigger:'item', formatter: p => `${p.name}<br>${fmt(p.value)}（${p.percent}%）` },
+    legend: { bottom: 0, textStyle:{fontFamily:'inherit'} },
+    series: [{ type:'pie', radius:['38%','66%'], center:['50%','44%'], data: sa.perScene.map(s => ({name:SCENE[s.scene], value:s.sec})), label:{formatter:'{b} {d}%', fontSize:11} }]
+  });
+
+  deviceChart.setOption({
+    grid: { left: 8, right: 40, top: 8, bottom: 20, containLabel:true },
+    tooltip: { formatter: p => `${p.name}<br>${fmt(p.value)}` },
+    xAxis: { type:'value', axisLabel:{formatter: v => fmt(v).replace(' 小时','h').replace(' 分钟','m')}, splitLine:{lineStyle:{color:'#eee'}} },
+    yAxis: { type:'category', data: data.devices.map(d => d.name), inverse:true, axisLabel:{fontSize:11} },
+    series: [{ type:'bar', data: data.devices.map(d => d.sec), barWidth:'55%', itemStyle:{color:'#6f8fbf', borderRadius:[0,4,4,0]} }]
+  });
+
+  dailyChart.setOption({
+    tooltip: { formatter: p => `${p.name}<br>${fmt(p.value)}` },
+    grid: { left: 8, right: 20, top: 8, bottom: 24, containLabel:true },
+    xAxis: { type:'category', data: data.daily.map(d => d.date.slice(5)), axisLabel:{fontSize:10.5, interval:2} },
+    yAxis: { type:'value', splitLine:{lineStyle:{color:'#eee'}} },
+    series: [{ type:'bar', data: data.daily.map(d => d.sec), itemStyle:{color:'#6f8fbf', borderRadius:[3,3,0,0]}, barMaxWidth:18 }]
+  });
+
+  const W = ['周一','周二','周三','周四','周五','周六','周日'];
+  const cells = data.heatmap.map(c => [c.hour, c.weekday, c.sec]);
+  heatChart.setOption({
+    tooltip: { formatter: p => `${W[p.value[1]]} ${p.value[0]}:00 — ${fmt(p.value[2])}` },
+    grid: { left: 8, right: 20, top: 8, bottom: 60, containLabel:true },
+    xAxis: { type:'category', data: Array.from({length:24}, (_,i)=>i+'时'), splitArea:{show:true} },
+    yAxis: { type:'category', data: W, splitArea:{show:true} },
+    visualMap: { min:0, max: data.heatmap.length ? Math.max(...data.heatmap.map(c=>c.sec)) : 1, calculable:false, orient:'horizontal', left:'center', bottom:0, inRange:{color:['#f2eee4','#b8c8e0','#5a7ba6']} },
+    series: [{ type:'heatmap', data: cells, label:{show:false} }]
+  });
+
+  renderTable(data.segments);
+}
+
+function renderTable(segs) {
+  const tbody = document.querySelector('#segTable tbody');
+  if (!segs.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">还没有记录。插上耳机开始记录吧。</div></td></tr>'; return; }
+  tbody.innerHTML = segs.map(s => {
+    const tags = (s.scenes.length ? s.scenes : [s.scene]).map(t => `<span class="tag${t==='Unmarked'?' un':''}">${SCENE[t]||t}</span>`).join('');
+    return `<tr>
+      <td>${shortDate(s.start)}</td>
+      <td>${fmt(s.durationSec)}</td>
+      <td>${SCENE[s.scene]||s.scene}</td>
+      <td>${s.app||''}${s.title ? ' · ' + esc(s.title) : ''}</td>
+      <td>${s.confirmed ? '✓' : '—'}</td>
+      <td>${s.note ? esc(s.note) : ''}</td>
+      <td><button class="btn" onclick="editSeg(${s.id})">编辑</button></td>
+    </tr>`;
+  }).join('');
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+let lastSegments = [];
+function editSeg(id) {
+  const s = lastSegments.find(x => x.id === id);
+  if (!s) return;
+  editingId = id;
+  const bar = document.getElementById('editbar');
+  bar.classList.add('visible');
+  const sel = document.getElementById('eScene');
+  sel.innerHTML = SCENE_KEYS.map(k => `<option value="${k}" ${k===s.scene?'selected':''}>${SCENE[k]}</option>`).join('');
+  const tags = document.getElementById('eScenes');
+  tags.innerHTML = SCENE_KEYS.map(k => `<label style="display:flex;gap:3px;align-items:center;font-size:12.5px"><input type="checkbox" value="${k}" ${(s.scenes.length?s.scenes:[s.scene]).includes(k)?'checked':''}>${SCENE[k]}</label>`).join('');
+  document.getElementById('eNote').value = s.note || '';
+  document.getElementById('eConfirmed').checked = !!s.confirmed;
+  bar.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+document.getElementById('eSave').onclick = () => {
+  if (editingId == null) return;
+  const scene = document.getElementById('eScene').value;
+  const scenes = Array.from(document.querySelectorAll('#eScenes input:checked')).map(i => i.value);
+  if (!scenes.includes(scene)) scenes.push(scene);
+  send({type:'update', id:editingId, scene, scenes,
+    note:document.getElementById('eNote').value.trim() || null,
+    confirmed:document.getElementById('eConfirmed').checked});
+};
+document.getElementById('eCancel').onclick = () => {
+  document.getElementById('editbar').classList.remove('visible'); editingId = null;
+};
+
+window.chrome.webview.addEventListener('message', e => {
+  const msg = JSON.parse(e.data);
+  if (msg.type === 'data') { lastSegments = msg.data.segments || []; render(msg.data); }
+  document.getElementById('editbar').classList.remove('visible'); editingId = null;
+});
+document.addEventListener('DOMContentLoaded', () => send({type:'load'}));
+window.addEventListener('resize', () => { sceneChart.resize(); deviceChart.resize(); dailyChart.resize(); heatChart.resize(); });
+</script>
+</body>
+</html>

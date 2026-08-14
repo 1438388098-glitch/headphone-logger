@@ -15,4 +15,9 @@
     <PackageReference Include="NAudio" Version="2.3.0" />
   </ItemGroup>
 
+  <!-- 统计页资源随构建复制到输出目录 -->
+  <ItemGroup>
+    <None Update="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
