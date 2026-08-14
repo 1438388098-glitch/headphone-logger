@@ -98,6 +98,11 @@ public sealed class StatsWindow : Form
                     HandleSetRule(root);
                     PostData();
                     break;
+                case "setTheme":
+                    // 切换深浅色主题，持久化并广播给气泡；回传 dark 供前端刷新
+                    App.ThemeSettings.Toggle();
+                    PostData();
+                    break;
             }
         }
         catch
@@ -113,8 +118,10 @@ public sealed class StatsWindow : Form
         {
             var from = ParseDate(root.GetProperty("from").GetString());
             var to = ParseDate(root.GetProperty("to").GetString());
+            var minDur = root.TryGetProperty("minDur", out var md) && md.ValueKind == JsonValueKind.Number ? md.GetInt32() : 0;
             var segs = _stats.GetSegments(new SegmentFilter(
-                FromLocal: from, ToLocalExclusive: to?.AddDays(1)));
+                FromLocal: from, ToLocalExclusive: to?.AddDays(1)))
+                .Where(s => minDur <= 0 || s.DurationSec >= minDur);
 
             using var dialog = new SaveFileDialog
             {
@@ -249,6 +256,7 @@ public sealed class StatsWindow : Form
         return new
         {
             type = "data",
+            dark = App.ThemeSettings.Dark,
             data = new
             {
                 overview = new

@@ -6,10 +6,26 @@
 <title>耳机使用统计</title>
 <script src="echarts.min.js"></script>
 <style>
-  :root { --paper:#fbfaf5; --ink:#2b2b2b; --muted:#8a8a86; --rule:#e4e1d8; --accent:#3a5f8a; }
+  :root {
+    --paper:#fbfaf5; --ink:#2b2b2b; --muted:#8a8a86; --rule:#e4e1d8; --accent:#3a5f8a;
+    --card:#fff; --card-hero:#f3f7fc; --hover:#faf7ef; --dayhdr:#f7f5ef;
+    --tag:#eef2f7; --tag-un:#f0efea; --chip-bg:#fdf3e3; --chip-fg:#8a6a2a; --chip-line:#ead9b0;
+    --chip-hover:#fbebc8; --chip-b:#a5742a; --hl:#fff7e0; --up:#5a8a5a; --down:#b06050;
+    --splitline:#eee; --bar1:#6f8fbf; --bar2:#5a7ba6; --heat1:#f2eee4; --heat2:#b8c8e0;
+    --theme-btn-bg:#fff; --theme-btn-fg:#2b2b2b;
+    --pane-fade:0.22s ease;
+  }
+  body.dark {
+    --paper:#1b1d21; --ink:#e4e4e4; --muted:#9a9a9a; --rule:#383b41; --accent:#7da2cc;
+    --card:#23262b; --card-hero:#262b33; --hover:#2a2e35; --dayhdr:#26292f;
+    --tag:#2c3140; --tag-un:#2a2d33; --chip-bg:#3a3324; --chip-fg:#d8b877; --chip-line:#4a4130;
+    --chip-hover:#443b28; --chip-b:#e0c080; --hl:#3d3a2a; --up:#7db87d; --down:#d07a6a;
+    --splitline:#3a3d44; --bar1:#5a7ba6; --bar2:#4a6a94; --heat1:#2a2e36; --heat2:#3a4a66;
+    --theme-btn-bg:#2c3037; --theme-btn-fg:#e4e4e4;
+  }
   * { box-sizing:border-box; margin:0; padding:0; }
   html, body { height:100%; overflow:hidden; }
-  body { font-family:"Source Han Serif SC","Songti SC",Georgia,serif; background:var(--paper); color:var(--ink); display:flex; flex-direction:column; }
+  body { font-family:"Source Han Serif SC","Songti SC",Georgia,serif; background:var(--paper); color:var(--ink); display:flex; flex-direction:column; transition:background var(--pane-fade),color var(--pane-fade); }
   header { padding:10px 18px 0; flex:none; }
   .hdr { display:flex; align-items:baseline; gap:12px; margin-bottom:8px; }
   h1 { font-size:18px; font-weight:600; letter-spacing:.5px; }
@@ -22,51 +38,60 @@
   .pane { display:flex; flex-direction:column; height:100%; gap:10px; }
   .pane.hidden { display:none; }
   .cards { display:flex; gap:12px; flex:none; }
-  .card { background:#fff; border:1px solid var(--rule); border-radius:8px; padding:10px 14px; flex:1; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+  .card { background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:10px 14px; flex:1; box-shadow:0 1px 2px rgba(0,0,0,.03); }
   .card .k { font-size:11.5px; color:var(--muted); }
   .card .v { font-size:19px; font-weight:600; margin-top:2px; }
   .card .d { font-size:11px; margin-top:2px; color:var(--muted); }
-  .card.hero { border-color:var(--accent); background:linear-gradient(180deg,#fff,#f3f7fc); }
+  .card.hero { border-color:var(--accent); background:linear-gradient(180deg,var(--card),var(--card-hero)); }
   .card.hero .v { font-size:30px; color:var(--accent); margin-top:4px; }
   .card.hero .d { font-size:12px; }
-  .up { color:#5a8a5a; } .down { color:#b06050; }
+  .up { color:var(--up); } .down { color:var(--down); }
   .two { display:flex; gap:12px; flex:1; min-height:0; }
-  .chart { background:#fff; border:1px solid var(--rule); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; flex:1; min-width:0; }
+  .chart { background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; flex:1; min-width:0; }
   .chart h3 { font-size:13px; font-weight:600; margin-bottom:4px; flex:none; }
   .chart .hint { font-size:11px; color:var(--muted); margin-bottom:4px; flex:none; }
   .box { flex:1; min-height:0; }
-  table { width:100%; border-collapse:collapse; font-size:12px; background:#fff; }
+  table { width:100%; border-collapse:collapse; font-size:12px; background:var(--card); }
   th, td { text-align:left; padding:6px 9px; border-bottom:1px solid var(--rule); white-space:nowrap; }
   th { color:var(--muted); font-weight:600; font-size:11px; }
-  tr:hover td { background:#faf7ef; }
-  .tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:10.5px; margin-right:3px; background:#eef2f7; color:var(--accent); }
-  .tag.un { background:#f0efea; color:var(--muted); }
-  .btn { border:1px solid var(--rule); background:#fff; color:var(--ink); padding:1px 9px; border-radius:6px; font-size:11.5px; cursor:pointer; }
+  tr:hover td { background:var(--hover); }
+  .tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:10.5px; margin-right:3px; background:var(--tag); color:var(--accent); }
+  .tag.un { background:var(--tag-un); color:var(--muted); }
+  .btn { border:1px solid var(--rule); background:var(--card); color:var(--ink); padding:1px 9px; border-radius:6px; font-size:11.5px; cursor:pointer; transition:border-color .15s,color .15s,background var(--pane-fade); }
   .btn:hover { border-color:var(--accent); color:var(--accent); }
-  .editbar { display:none; background:#fff; border:1px solid var(--rule); border-radius:8px; padding:8px 12px; gap:10px; align-items:center; flex-wrap:wrap; flex:none; }
+  .editbar { display:none; background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:8px 12px; gap:10px; align-items:center; flex-wrap:wrap; flex:none; }
   .editbar.visible { display:flex; }
   .editbar label { font-size:12px; color:var(--muted); }
-  select, input[type=text] { font-family:inherit; font-size:12px; border:1px solid var(--rule); border-radius:6px; padding:2px 7px; background:#fff; }
+  select, input[type=text] { font-family:inherit; font-size:12px; border:1px solid var(--rule); border-radius:6px; padding:2px 7px; background:var(--card); color:var(--ink); }
   .editbar .tags { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; }
-  .filterbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:none; background:#fff; border:1px solid var(--rule); border-radius:8px; padding:8px 12px; }
+  .filterbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:none; background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:8px 12px; }
   .filterbar .foot { padding-top:0; margin-left:auto; }
-  .dayhdr td { background:#f7f5ef; color:var(--muted); font-weight:600; }
+  .dayhdr td { background:var(--dayhdr); color:var(--muted); font-weight:600; }
   .tblwrap { flex:1; overflow:auto; border:1px solid var(--rule); border-radius:8px; }
   .empty { color:var(--muted); padding:40px; text-align:center; }
   .foot { color:var(--muted); font-size:10.5px; flex:none; padding-top:6px; }
   .toolbar { display:flex; align-items:center; gap:10px; flex:none; }
   .toolbar .spacer { flex:1; }
-  .chip { background:#fdf3e3; color:#8a6a2a; border:1px solid #ead9b0; border-radius:14px; padding:3px 12px; font-size:12px; cursor:pointer; }
-  .chip:hover { background:#fbebc8; }
-  .chip b { color:#a5742a; }
+  .chip { background:var(--chip-bg); color:var(--chip-fg); border:1px solid var(--chip-line); border-radius:14px; padding:3px 12px; font-size:12px; cursor:pointer; transition:background .15s; }
+  .chip:hover { background:var(--chip-hover); }
+  .chip b { color:var(--chip-b); }
   .sw { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; cursor:pointer; }
   .scenetbl { flex:none; margin-top:8px; border-top:1px solid var(--rule); font-size:12px; }
   .scenetbl table { border:none; }
   .scenetbl td, .scenetbl th { padding:3px 9px; border:none; }
   .scenetbl .dur { text-align:right; font-variant-numeric:tabular-nums; }
   .scenetbl .ovl { color:var(--muted); font-size:10.5px; }
-  tr.hl td { background:#fff7e0 !important; }
+  tr.hl td { background:var(--hl) !important; }
   .hidden { display:none !important; }
+  /* 动效：tab 淡入 */
+  .pane { animation:paneIn var(--pane-fade) ease; }
+  @keyframes paneIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+  /* 动效：明细行淡入 */
+  #segTable tbody tr { animation:rowIn .25s ease; }
+  @keyframes rowIn { from { opacity:0; transform:translateY(2px); } to { opacity:1; transform:none; } }
+  /* 主题切换按钮 */
+  #themeBtn { background:var(--theme-btn-bg); color:var(--theme-btn-fg); border:1px solid var(--rule); border-radius:6px; padding:2px 10px; font-size:12px; cursor:pointer; font-family:inherit; transition:background var(--pane-fade),color var(--pane-fade),border-color .15s; }
+  #themeBtn:hover { border-color:var(--accent); }
 </style>
 </head>
 <body>
@@ -74,6 +99,8 @@
   <div class="hdr">
     <h1>耳机使用记录</h1>
     <span class="sub" id="subtitle"></span>
+    <span class="spacer" style="flex:1"></span>
+    <button id="themeBtn" title="切换深色/浅色">🌙 深色</button>
   </div>
   <nav class="tabs">
     <button class="tab active" data-tab="overview">总览</button>
@@ -134,6 +161,13 @@
         <option value="1">已确认</option>
         <option value="0">未确认</option>
       </select>
+      <select id="fMinDur">
+        <option value="">最短时长</option>
+        <option value="60">1 分钟</option>
+        <option value="180">3 分钟</option>
+        <option value="300">5 分钟</option>
+        <option value="600">10 分钟</option>
+      </select>
       <input type="text" id="fSearch" placeholder="搜索 应用 / 标题 / 备注">
       <button class="btn" id="fExport">导出 CSV</button>
       <span class="foot" id="foot"></span>
@@ -151,7 +185,7 @@
 const SCENE = { Music:'音乐', Video:'视频', Game:'游戏', Course:'网课', Meeting:'会议', Coding:'编程', Other:'其他', Unmarked:'未标注' };
 const SCENE_KEYS = Object.keys(SCENE);
 let editingId = null, lastSegments = [], allData = null;
-const filter = { range:'all', scene:'', device:'', confirm:'', search:'', from:null, to:null };
+const filter = { range:'all', scene:'', device:'', confirm:'', search:'', from:null, to:null, minDur:0 };
 
 function fmt(sec) {
   sec = Math.round(sec || 0);
@@ -183,50 +217,64 @@ const dailyChart = echarts.init(document.getElementById('dailyChart'));
 const heatChart = echarts.init(document.getElementById('heatChart'));
 const deviceChart = echarts.init(document.getElementById('deviceChart'));
 
+// 图表主题色：浅色/深色两套，按 body.dark 取色（render 每次读取当前主题）
+const THEME = {
+  light: { split:'#eee', bar1:'#6f8fbf', bar2:'#5a7ba6', heat:['#f2eee4','#b8c8e0','#5a7ba6'], label:'#2b2b2b' },
+  dark:  { split:'#3a3d44', bar1:'#5a7ba6', bar2:'#4a6a94', heat:['#2a2e36','#3a4a66','#5a7ba6'], label:'#c8c8c8' },
+};
+function chartTheme() { return document.body.classList.contains('dark') ? THEME.dark : THEME.light; }
+const chartAnimation = { animation:true, animationDuration:600, animationEasing:'cubicOut' };
+
 function render(data) {
   renderCards(data.overview);
   document.getElementById('subtitle').textContent =
     `会话 ${data.sessionCount} 次 · ${data.deviceCount} 个设备`;
 
   const sa = data.sceneAllocation;
+  const th = chartTheme();
   document.getElementById('sceneHint').textContent = `总 ${fmt(sa.totalSec)}，并发场景重复计入`;
   sceneChart.setOption({
+    ...chartAnimation,
     tooltip: { trigger:'item', formatter: p => `${p.name}<br>${fmt(p.value)}（${p.percent}%）` },
-    legend: { bottom: 0, textStyle:{fontFamily:'inherit', fontSize:11} },
-    series: [{ type:'pie', radius:['40%','66%'], center:['50%','44%'], data: sa.perScene.map(s => ({name:SCENE[s.scene]||s.scene, value:s.sec})), label:{formatter:'{b} {d}%', fontSize:11} }]
+    legend: { bottom: 0, textStyle:{fontFamily:'inherit', fontSize:11, color:th.label} },
+    series: [{ type:'pie', radius:['40%','66%'], center:['50%','44%'], data: sa.perScene.map(s => ({name:SCENE[s.scene]||s.scene, value:s.sec})), label:{formatter:'{b} {d}%', fontSize:11, color:th.label} }]
   });
   dailyChart.setOption({
+    ...chartAnimation,
     tooltip: { formatter: p => `${p.name}<br>${fmt(p.value)}` },
     grid: { left: 8, right: 16, top: 6, bottom: 22, containLabel:true },
-    xAxis: { type:'category', data: data.daily.map(d => d.date.slice(5)), axisLabel:{fontSize:10, interval:2} },
-    yAxis: { type:'value', splitLine:{lineStyle:{color:'#eee'}} },
-    series: [{ type:'bar', data: data.daily.map(d => d.sec), itemStyle:{color:'#6f8fbf', borderRadius:[3,3,0,0]}, barMaxWidth:16 }]
+    xAxis: { type:'category', data: data.daily.map(d => d.date.slice(5)), axisLabel:{fontSize:10, interval:2, color:th.label} },
+    yAxis: { type:'value', splitLine:{lineStyle:{color:th.split}}, axisLabel:{color:th.label} },
+    series: [{ type:'bar', data: data.daily.map(d => d.sec), itemStyle:{color:th.bar1, borderRadius:[3,3,0,0]}, barMaxWidth:16 }]
   });
 
   todayChart.setOption({
+    ...chartAnimation,
     tooltip: { formatter: p => `${p.name} 时 — ${fmt(p.value)}` },
     grid: { left: 8, right: 16, top: 6, bottom: 22, containLabel:true },
-    xAxis: { type:'category', data: Array.from({length:24}, (_,i)=>i+'时'), axisLabel:{fontSize:10, interval:3} },
-    yAxis: { type:'value', splitLine:{lineStyle:{color:'#eee'}} },
-    series: [{ type:'bar', data: data.todayHourly.map(h => h.sec), itemStyle:{color:'#5a7ba6', borderRadius:[3,3,0,0]}, barMaxWidth:16 }]
+    xAxis: { type:'category', data: Array.from({length:24}, (_,i)=>i+'时'), axisLabel:{fontSize:10, interval:3, color:th.label} },
+    yAxis: { type:'value', splitLine:{lineStyle:{color:th.split}}, axisLabel:{color:th.label} },
+    series: [{ type:'bar', data: data.todayHourly.map(h => h.sec), itemStyle:{color:th.bar2, borderRadius:[3,3,0,0]}, barMaxWidth:16 }]
   });
 
   const W = ['周一','周二','周三','周四','周五','周六','周日'];
   const cells = data.heatmap.map(c => [c.hour, c.weekday, c.sec]);
   heatChart.setOption({
+    ...chartAnimation,
     tooltip: { formatter: p => `${W[p.value[1]]} ${p.value[0]}:00 — ${fmt(p.value[2])}` },
     grid: { left: 8, right: 20, top: 6, bottom: 60, containLabel:true },
-    xAxis: { type:'category', data: Array.from({length:24}, (_,i)=>i+'时'), splitArea:{show:true} },
-    yAxis: { type:'category', data: W, splitArea:{show:true} },
-    visualMap: { min:0, max: data.heatmap.length ? Math.max(...data.heatmap.map(c=>c.sec)) : 1, calculable:false, orient:'horizontal', left:'center', bottom:0, inRange:{color:['#f2eee4','#b8c8e0','#5a7ba6']} },
+    xAxis: { type:'category', data: Array.from({length:24}, (_,i)=>i+'时'), splitArea:{show:true}, axisLabel:{color:th.label} },
+    yAxis: { type:'category', data: W, splitArea:{show:true}, axisLabel:{color:th.label} },
+    visualMap: { min:0, max: data.heatmap.length ? Math.max(...data.heatmap.map(c=>c.sec)) : 1, calculable:false, orient:'horizontal', left:'center', bottom:0, inRange:{color:th.heat}, textStyle:{color:th.label} },
     series: [{ type:'heatmap', data: cells }]
   });
   deviceChart.setOption({
+    ...chartAnimation,
     grid: { left: 8, right: 36, top: 6, bottom: 20, containLabel:true },
     tooltip: { formatter: p => `${p.name}<br>${fmt(p.value)}` },
-    xAxis: { type:'value', axisLabel:{formatter: v => fmt(v).replace(' 小时','h').replace(' 分钟','m')}, splitLine:{lineStyle:{color:'#eee'}} },
-    yAxis: { type:'category', data: data.devices.map(d => d.name), inverse:true, axisLabel:{fontSize:11} },
-    series: [{ type:'bar', data: data.devices.map(d => d.sec), barWidth:'50%', itemStyle:{color:'#6f8fbf', borderRadius:[0,4,4,0]} }]
+    xAxis: { type:'value', axisLabel:{formatter: v => fmt(v).replace(' 小时','h').replace(' 分钟','m'), color:th.label}, splitLine:{lineStyle:{color:th.split}} },
+    yAxis: { type:'category', data: data.devices.map(d => d.name), inverse:true, axisLabel:{fontSize:11, color:th.label} },
+    series: [{ type:'bar', data: data.devices.map(d => d.sec), barWidth:'50%', itemStyle:{color:th.bar1, borderRadius:[0,4,4,0]} }]
   });
   populateFilters(data);
   renderSceneTable(data.sceneAllocation);
@@ -344,6 +392,7 @@ function filterSegs(segs) {
     if (filter.device && (s.device || '未知设备') !== filter.device) return false;
     if (filter.confirm !== '' && String(s.confirmed ? 1 : 0) !== filter.confirm) return false;
     if (onlyConfirmed && !s.confirmed) return false;
+    if (filter.minDur > 0 && (s.durationSec || 0) < filter.minDur) return false;
     if (q && !((s.app || '') + ' ' + (s.title || '') + ' ' + (s.note || '')).toLowerCase().includes(q)) return false;
     return true;
   });
@@ -393,6 +442,7 @@ function readFilter() {
   filter.scene = document.getElementById('fScene').value;
   filter.device = document.getElementById('fDevice').value;
   filter.confirm = document.getElementById('fConfirm').value;
+  filter.minDur = Number(document.getElementById('fMinDur').value || 0);
   filter.from = document.getElementById('fFrom').value || null;
   filter.to = document.getElementById('fTo').value || null;
 }
@@ -402,7 +452,7 @@ function toggleCustomRange() {
   document.getElementById('fTo').classList.toggle('hidden', !custom);
   document.getElementById('fToSep').classList.toggle('hidden', !custom);
 }
-['fRange', 'fScene', 'fDevice', 'fConfirm'].forEach(id =>
+['fRange', 'fScene', 'fDevice', 'fConfirm', 'fMinDur'].forEach(id =>
   document.getElementById(id).addEventListener('change', () => { readFilter(); toggleCustomRange(); renderTable(lastSegments); }));
 document.getElementById('fFrom').addEventListener('change', () => { readFilter(); renderTable(lastSegments); });
 document.getElementById('fTo').addEventListener('change', () => { readFilter(); renderTable(lastSegments); });
@@ -423,23 +473,43 @@ document.getElementById('fExport').addEventListener('click', () => {
     const d = new Date(); d.setDate(1); from = d.toLocaleDateString('sv');
   }
   else if (filter.range === 'custom') { from = filter.from; to = filter.to; }
-  send({type:'export', from, to});
+  send({type:'export', from, to, minDur: filter.minDur});
 });
 toggleCustomRange();
 
-/* tab 切换 */
+/* tab 切换（含淡入动效：重新触发 .pane 动画） */
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
-  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('hidden', p.id !== b.dataset.tab));
+  const target = document.getElementById(b.dataset.tab);
+  document.querySelectorAll('.pane').forEach(p => { if (p !== target) p.classList.add('hidden'); });
+  if (target.classList.contains('hidden')) {
+    target.classList.remove('hidden');
+    target.style.animation = 'none';
+    target.offsetHeight; // 强制 reflow 以重新触发动画
+    target.style.animation = '';
+  }
   const charts = { overview:[todayChart, sceneChart], heat:[heatChart, dailyChart], device:[deviceChart], detail:[] }[b.dataset.tab] || [];
   charts.forEach(c => setTimeout(() => c.resize(), 0));
 }));
+
+/* 主题：初始化 + 切换 */
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  document.getElementById('themeBtn').textContent = dark ? '☀️ 浅色' : '🌙 深色';
+  if (allData) render(allData); // 图表重绘为新主题色
+}
+function initTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  document.getElementById('themeBtn').textContent = dark ? '☀️ 浅色' : '🌙 深色';
+}
+document.getElementById('themeBtn').addEventListener('click', () => send({type:'setTheme'}));
 
 window.chrome.webview.addEventListener('message', e => {
   // 部分 WebView2 版本直接把对象放进 e.data，部分给 JSON 字符串，两种都兼容
   const msg = (typeof e.data === 'string') ? JSON.parse(e.data) : e.data;
   if (msg.type === 'data') {
     lastSegments = msg.data.segments || [];
+    if (msg.data.dark !== undefined) initTheme(msg.data.dark);
     render(msg.data);
   }
   // M6：编辑态（editbar 可见且未保存）不因后台刷新被清空；只有保存/取消/自己关闭才结束编辑

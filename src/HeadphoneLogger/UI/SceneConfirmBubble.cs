@@ -27,8 +27,17 @@ public sealed class SceneConfirmBubble : Form
     private readonly System.Windows.Forms.Timer _timeoutTimer;
     private readonly List<CheckBox> _concurrentBoxes = [];
     private readonly Font _tagFont; // 共享字体，避免每次重建 CheckBox 时泄漏 GDI 字体句柄
+    private readonly Color _lightBack = Color.FromArgb(252, 251, 246); // 米白纸色
+    private readonly Color _darkBack = Color.FromArgb(35, 38, 43);     // 深灰纸色
+    private readonly Color _lightTitle = Color.FromArgb(40, 40, 40);
+    private readonly Color _darkTitle = Color.FromArgb(228, 228, 228);
+    private readonly Color _lightInfo = Color.FromArgb(110, 110, 110);
+    private readonly Color _darkInfo = Color.FromArgb(160, 160, 160);
+    private readonly Color _lightComboBack = Color.White;
+    private readonly Color _darkComboBack = Color.FromArgb(44, 48, 55);
 
     private bool _editMode;
+    private bool _dark;
 
     /// <summary>气泡结果回调（确认/改场景/超时都走这里）。</summary>
     [Browsable(false)]
@@ -43,7 +52,7 @@ public sealed class SceneConfirmBubble : Form
         TopMost = true;
         AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(BubbleWidth, 176);
-        BackColor = Color.FromArgb(252, 251, 246); // 米白纸色
+        BackColor = _lightBack; // 默认浅色，构造后按当前主题 ApplyTheme
 
         ApplyRoundedRegion();
 
@@ -52,7 +61,7 @@ public sealed class SceneConfirmBubble : Form
             AutoSize = true,
             Location = new Point(Margin, 16),
             Font = new Font("Microsoft YaHei UI", 12f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(40, 40, 40),
+            ForeColor = _lightTitle,
             Text = string.Empty,
         };
 
@@ -62,7 +71,7 @@ public sealed class SceneConfirmBubble : Form
             Location = new Point(Margin, 48),
             MaximumSize = new Size(BubbleWidth - Margin * 2, 0),
             Font = new Font("Microsoft YaHei UI", 9.5f),
-            ForeColor = Color.FromArgb(110, 110, 110),
+            ForeColor = _lightInfo,
             Text = string.Empty,
         };
 
@@ -106,8 +115,35 @@ public sealed class SceneConfirmBubble : Form
         };
 
         _tagFont = new Font("Microsoft YaHei UI", 8.5f);
-        // 用户改主场景下拉时，重置 5 分钟超时计时（符合「无操作才超时」语义）
+        // 用户改主场景下拉时，重置 3 分钟超时计时（符合「无操作才超时」语义）
         _sceneCombo.SelectedIndexChanged += (_, _) => ResetTimeout();
+
+        ApplyTheme(HeadphoneLogger.App.ThemeSettings.Dark); // 按当前偏好初始化配色
+    }
+
+    /// <summary>切换浅色/深色配色（构造初始化与 ThemeChanged 广播都走这里）。</summary>
+    public void ApplyTheme(bool dark)
+    {
+        _dark = dark;
+        BackColor = dark ? _darkBack : _lightBack;
+        _titleLabel.ForeColor = dark ? _darkTitle : _lightTitle;
+        _infoLabel.ForeColor = dark ? _darkInfo : _lightInfo;
+        _sceneCombo.BackColor = dark ? _darkComboBack : _lightComboBack;
+        _sceneCombo.ForeColor = dark ? _darkTitle : _lightTitle;
+        // 复选框（并发标签）逐个应用配色
+        foreach (var box in _concurrentBoxes)
+        {
+            box.ForeColor = dark ? _darkTitle : _lightTitle;
+            box.BackColor = Color.Transparent;
+        }
+        // 按钮配色：确认键绿底白字不变；「让我改/稍后标」描边按钮适配深色文字与边框
+        _primaryButton.ForeColor = Color.White;
+        _primaryButton.BackColor = dark ? Color.FromArgb(52, 120, 78) : Color.FromArgb(52, 120, 78);
+        _secondaryButton.ForeColor = dark ? _darkTitle : Color.FromArgb(80, 80, 80);
+        _secondaryButton.BackColor = dark ? _darkComboBack : Color.Transparent;
+        _laterButton.ForeColor = dark ? Color.FromArgb(210, 180, 110) : Color.FromArgb(150, 120, 60);
+        _laterButton.BackColor = dark ? _darkComboBack : Color.Transparent;
+        Refresh();
     }
 
     /// <summary>用最新草稿刷新气泡内容（pending 合并时调用）。编辑态下保留用户选择，不重置。</summary>
@@ -137,6 +173,8 @@ public sealed class SceneConfirmBubble : Form
                 Font = _tagFont,
                 Margin = new Padding(0, 2, 10, 0),
                 Tag = scene,
+                ForeColor = _dark ? _darkTitle : _lightTitle,
+                BackColor = Color.Transparent,
             };
             box.CheckedChanged += (_, _) => ResetTimeout();
             _concurrentPanel.Controls.Add(box);

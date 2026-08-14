@@ -120,6 +120,21 @@ public sealed class TrayApp : IDisposable
         _monitor.DeviceInserted += OnMonitorInserted;
         _monitor.DeviceRemoved += OnMonitorRemoved;
         _scanner.ForegroundChanged += OnScannerForeground;
+        // 主题切换：正在显示的气泡即时换肤
+        App.ThemeSettings.ThemeChanged += OnThemeChanged;
+    }
+
+    /// <summary>主题切换时让气泡即时换肤（经隐藏宿主封送到 UI 线程）。</summary>
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            _syncHost.BeginInvoke(new Action(() => _bubble.ApplyTheme(App.ThemeSettings.Dark)));
+        }
+        catch
+        {
+            // 应用退出窗口期：丢弃该次主题刷新
+        }
     }
 
     public void Start()
@@ -279,6 +294,7 @@ public sealed class TrayApp : IDisposable
         _monitor.DeviceInserted -= OnMonitorInserted;
         _monitor.DeviceRemoved -= OnMonitorRemoved;
         _scanner.ForegroundChanged -= OnScannerForeground;
+        App.ThemeSettings.ThemeChanged -= OnThemeChanged;
 
         _bubble.Dispose();
         _syncHost.Dispose();
