@@ -9,23 +9,18 @@ public sealed class StatsRepositoryTests : IDisposable
     // 本地时钟固定为 2026-08-14（周五）中午
     private static readonly DateTime Now = new(2026, 8, 14, 12, 0, 0);
 
-    private readonly string _path = Path.Combine(Path.GetTempPath(), $"hpl-{Guid.NewGuid():N}.db");
-    private readonly SqliteConnection _conn;
+    private readonly TestDb _db;
     private readonly SessionStore _store;
     private readonly StatsRepository _stats;
 
     public StatsRepositoryTests()
     {
-        _conn = AppDatabase.Open(_path);
-        _store = new SessionStore(_conn);
-        _stats = new StatsRepository(_conn, () => Now);
+        _db = new TestDb(() => Now);
+        _store = _db.Store;
+        _stats = _db.Stats;
     }
 
-    public void Dispose()
-    {
-        _conn.Dispose();
-        if (File.Exists(_path)) File.Delete(_path);
-    }
+    public void Dispose() => _db.Dispose();
 
     private static DateTimeOffset Local(DateTime d) => new(d); // 按本机时区解释为墙钟时间
 

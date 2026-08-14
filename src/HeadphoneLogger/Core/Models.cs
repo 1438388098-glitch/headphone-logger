@@ -33,7 +33,7 @@ public sealed class Segment
 public sealed class SceneDraft
 {
     public required Scene MainScene { get; init; }
-    public required IReadOnlyList<Scene> ConcurrentScenes { get; init; }
+    public required IReadOnlySet<Scene> ConcurrentScenes { get; init; }
     public required string? AppName { get; init; }
     public required string? WindowTitle { get; init; }
 }
