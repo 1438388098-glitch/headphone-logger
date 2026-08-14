@@ -82,7 +82,14 @@ public sealed class TrayApp : IDisposable
 
     public void Start()
     {
-        _monitor.Start();
+        try
+        {
+            _monitor.Start();
+        }
+        catch
+        {
+            // 音频子系统不可用：托盘与统计仍可用，仅不记录会话
+        }
         _scanner.Start();
         _sm.Start();
         _bubbleSync.Start();

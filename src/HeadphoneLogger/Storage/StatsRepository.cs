@@ -289,6 +289,26 @@ public sealed class StatsRepository
 
     public int GetSessionCount() => LoadSessions().Count;
 
+    public IReadOnlyList<SceneRule> GetSceneRules()
+    {
+        var list = new List<SceneRule>();
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "SELECT id, app_pattern, title_pattern, scene, enabled FROM scene_rules ORDER BY id;";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(new SceneRule
+            {
+                Id = reader.GetInt64(0),
+                AppPattern = reader.GetString(1),
+                TitlePattern = reader.IsDBNull(2) ? null : reader.GetString(2),
+                Scene = ParseScene(reader.GetString(3)),
+                Enabled = reader.GetInt64(4) != 0,
+            });
+        }
+        return list;
+    }
+
     public IReadOnlyList<string> GetDeviceNames() =>
         LoadSessions()
             .Select(s => string.IsNullOrEmpty(s.DeviceName) ? "未知设备" : s.DeviceName)

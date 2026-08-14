@@ -61,7 +61,7 @@ public sealed class StatsWindow : Form
     {
         try
         {
-            using var doc = JsonDocument.Parse(e.WebMessageAsJson);
+            using var doc = UnwrapWebMessage(e);
             var root = doc.RootElement;
             var type = root.GetProperty("type").GetString();
             switch (type)
@@ -146,6 +146,19 @@ public sealed class StatsWindow : Form
                 }),
             },
         };
+    }
+
+    /// <summary>
+    /// postMessage(JSON 字符串) 时 WebMessageAsJson 是带引号的字符串；解一层拿到真正的 JSON。
+    /// 若本版本直接给对象，则原样解析。
+    /// </summary>
+    private static JsonDocument UnwrapWebMessage(CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        var json = e.WebMessageAsJson;
+        using var probe = JsonDocument.Parse(json);
+        if (probe.RootElement.ValueKind == JsonValueKind.String)
+            return JsonDocument.Parse(probe.RootElement.GetString()!);
+        return JsonDocument.Parse(json);
     }
 
     private static Scene ParseScene(string? s) =>
