@@ -122,6 +122,22 @@ public sealed class StatsRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void TodayHourly_SplitsByHour_ClipsToToday()
+    {
+        // 今日 09:30-10:30 → 9 时 1800s、10 时 1800s
+        AddSegment(new DateTime(2026, 8, 14, 9, 30, 0), new DateTime(2026, 8, 14, 10, 30, 0), Scene.Video);
+        // 跨午夜段（8/13 23:30 → 8/14 01:00）：今日部分仅 0 时 3600s
+        AddSegment(new DateTime(2026, 8, 13, 23, 30, 0), new DateTime(2026, 8, 14, 1, 0, 0), Scene.Music);
+
+        var hours = _stats.GetTodayHourly();
+        Assert.Equal(24, hours.Count); // 全天 24 小时，含零值
+        Assert.Equal(1800, hours.Single(h => h.Hour == 9).Sec);
+        Assert.Equal(1800, hours.Single(h => h.Hour == 10).Sec);
+        Assert.Equal(3600, hours.Single(h => h.Hour == 0).Sec);
+        Assert.Equal(0, hours.Single(h => h.Hour == 23).Sec);
+    }
+
+    [Fact]
     public void DeviceDurations_GroupsByDeviceName()
     {
         var a = AddSession(new DateTime(2026, 8, 14, 9, 0, 0), "WH-1000XM4");
@@ -199,5 +215,57 @@ public sealed class StatsRepositoryTests : IDisposable
         var dur = _stats.GetDeviceDurations(new DateTime(2026, 8, 14), new DateTime(2026, 8, 15))
             .Single(d => d.DeviceName == "WH-1000XM4").TotalSec;
         Assert.Equal(330, dur);
+    }
+
+    [Fact]
+    public void CrossMidnightSegment_AttributesToEachDay_ConsistentWithHourly()
+    {
+        // 8/13 23:30 → 8/14 00:30：按日界拆分，13 日 1800s、14 日 1800s
+        AddSegment(new DateTime(2026, 8, 13, 23, 30, 0), new DateTime(2026, 8, 14, 0, 30, 0), Scene.Video);
+
+        var o = _stats.GetOverview();
+        Assert.Equal(1800, o.YesterdaySec); // 8/13 计 30 分钟
+        Assert.Equal(1800, o.TodaySec);     // 8/14 计 30 分钟
+
+        var dailies = _stats.GetDailyDurations(30);
+        Assert.Equal(1800, dailies.Single(d => d.LocalDate == new DateTime(2026, 8, 13)).TotalSec);
+        Assert.Equal(1800, dailies.Single(d => d.LocalDate == new DateTime(2026, 8, 14)).TotalSec);
+    }
+
+    [Fact]
+    public void GetSegments_MaxCount_LimitsResults()
+    {
+        for (var i = 0; i < 5; i++)
+            AddSegment(new DateTime(2026, 8, 14, 9, 0, 0).AddMinutes(i),
+                new DateTime(2026, 8, 14, 9, 30, 0).AddMinutes(i), Scene.Music);
+
+        var all = _stats.GetSegments(new SegmentFilter());
+        Assert.Equal(5, all.Count);
+        var limited = _stats.GetSegments(new SegmentFilter(MaxCount: 3));
+        Assert.Equal(3, limited.Count);
+        Assert.Equal(Scene.Music, limited[0].Scene); // 取的是最新的 3 条
+    }
+
+    [Fact]
+    public void UnconfirmedCount_CountsOnlyUnconfirmed()
+    {
+        AddSegment(new DateTime(2026, 8, 14, 9, 0, 0), new DateTime(2026, 8, 14, 9, 30, 0), Scene.Music, confirmed: true);
+        AddSegment(new DateTime(2026, 8, 14, 10, 0, 0), new DateTime(2026, 8, 14, 10, 30, 0), Scene.Video, confirmed: false);
+        AddSegment(new DateTime(2026, 8, 14, 11, 0, 0), new DateTime(2026, 8, 14, 11, 30, 0), Scene.Game, confirmed: false);
+
+        Assert.Equal(2, _stats.GetUnconfirmedCount());
+    }
+
+    [Fact]
+    public void UpsertSceneRule_AddsAndOverrides()
+    {
+        _stats.UpsertSceneRule("myapp", Scene.Game);
+        Assert.Equal(Scene.Game, _stats.GetSceneRules().Single(r => r.AppPattern == "myapp").Scene);
+
+        // 覆盖同 app 规则
+        _stats.UpsertSceneRule("MYAPP", Scene.Coding);
+        var rules = _stats.GetSceneRules().Where(r => r.AppPattern == "myapp").ToList();
+        Assert.Single(rules);
+        Assert.Equal(Scene.Coding, rules[0].Scene);
     }
 }

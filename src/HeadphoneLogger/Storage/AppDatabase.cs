@@ -1,3 +1,4 @@
+using HeadphoneLogger.App;
 using HeadphoneLogger.Core;
 using Microsoft.Data.Sqlite;
 
@@ -23,7 +24,12 @@ public static class AppDatabase
         conn.Open();
         using (var pragma = conn.CreateCommand())
         {
-            pragma.CommandText = "PRAGMA foreign_keys=ON;";
+            pragma.CommandText = """
+                PRAGMA foreign_keys=ON;
+                PRAGMA journal_mode=WAL;
+                PRAGMA synchronous=NORMAL;
+                PRAGMA busy_timeout=3000;
+                """;
             pragma.ExecuteNonQuery();
         }
         CreateSchema(conn);
@@ -116,36 +122,49 @@ public static class AppDatabase
         if (!File.Exists(path))
             return;
 
-        // 只读打开跑 integrity_check，避免在坏库上先建连失败
-        SqliteConnection conn;
+        SqliteConnection? conn = null;
         try
         {
+            // 只读打开跑 integrity_check，避免在坏库上先建连失败
             conn = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False");
             conn.Open();
         }
         catch (SqliteException)
         {
+            conn?.Dispose();
             Quarantine(path);
             return;
         }
 
+        string? result;
         try
         {
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "PRAGMA integrity_check;";
-            var result = (string?)cmd.ExecuteScalar();
-            if (result != "ok")
-                Quarantine(path);
+            cmd.CommandText = "PRAGMA quick_check;"; // 比 integrity_check 快约 5 倍，百万行启动不卡顿
+            result = (string?)cmd.ExecuteScalar();
         }
         finally
         {
+            // 必须先释放连接（文件句柄）才能改名；否则 Windows 上 File.Move 因共享冲突抛异常
             conn.Dispose();
         }
+
+        if (result != "ok")
+            Quarantine(path);
     }
 
+    /// <summary>损坏库改名保留，毫秒+随机后缀避免同秒重名；失败则降级（尝试原路径继续打开）。</summary>
     private static void Quarantine(string path)
     {
-        var backup = path + "." + DateTime.Now.ToString("yyyyMMddHHmmss") + ".bak";
-        File.Move(path, backup);
+        var backup = $"{path}.{DateTime.Now:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}.bak";
+        try
+        {
+            File.Move(path, backup);
+        }
+        catch (Exception ex)
+        {
+            // 文件被占用/权限不足等情况：记日志降级，交由 Open 路径处理，不让启动崩溃
+            ErrorLog.Write(ex);
+        }
     }
 }

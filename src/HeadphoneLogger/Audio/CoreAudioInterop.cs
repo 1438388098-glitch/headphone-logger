@@ -40,9 +40,9 @@ internal interface IMMDeviceEnumerator
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IMMDevice
 {
+    // 直接 out 目标接口：由 marshaler 做 QI 并只产生一个 RCW，避免 out object + 强转的双 RCW
     [PreserveSig]
-    int Activate(ref Guid iid, int clsCtx, IntPtr activationParams,
-        [MarshalAs(UnmanagedType.IUnknown)] out object ppInterface);
+    int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, out IAudioSessionManager2 ppInterface);
     [PreserveSig]
     int OpenPropertyStore(int access, out IntPtr propertyStore);
     [PreserveSig]
@@ -82,9 +82,9 @@ internal interface IAudioSessionManager2
     [PreserveSig]
     int UnregisterSessionNotification(IntPtr sessionNotification);
     [PreserveSig]
-    int RegisterDuckNotification(IntPtr sessionId, IntPtr duckNotification);
+    int RegisterDuckNotification([MarshalAs(UnmanagedType.LPWStr)] string sessionId, IntPtr duckNotification);
     [PreserveSig]
-    int UnregisterDuckNotification(IntPtr sessionId, IntPtr duckNotification);
+    int UnregisterDuckNotification([MarshalAs(UnmanagedType.LPWStr)] string sessionId, IntPtr duckNotification);
 }
 
 [ComImport]
@@ -118,7 +118,7 @@ internal interface IAudioSessionControl2
     [PreserveSig]
     int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string value, ref Guid eventContext);
     [PreserveSig]
-    int GetGroupingParam(out Guid grouping, out int groupingChanged);
+    int GetGroupingParam(out Guid grouping);
     [PreserveSig]
     int SetGroupingParam(ref Guid grouping, ref Guid eventContext);
     [PreserveSig]

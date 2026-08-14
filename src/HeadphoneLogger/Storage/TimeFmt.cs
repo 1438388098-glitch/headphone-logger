@@ -12,4 +12,9 @@ public static class TimeFmt
 
     public static DateTimeOffset ParseUtc(string s) =>
         DateTimeOffset.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+    /// <summary>宽容解析：坏字符串不抛异常（读侧聚合用于跳过坏行）。</summary>
+    public static bool TryParseUtc(string s, out DateTimeOffset value) =>
+        DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out value);
 }

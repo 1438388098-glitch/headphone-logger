@@ -18,6 +18,12 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        // 全局未捕获异常：托盘/气泡/Timer/COM 回调线程的异常都记日志，避免静默崩溃
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        Application.ThreadException += (_, e) => ErrorLog.Write(e.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            ErrorLog.Write(e.ExceptionObject is Exception ex ? ex : new Exception(e.ExceptionObject?.ToString()));
+
         ApplicationConfiguration.Initialize();
 
         _mutex = new Mutex(true, MutexName, out var createdNew);
@@ -31,18 +37,21 @@ internal static class Program
         try
         {
             var conn = AppDatabase.Open(AppDatabase.DefaultPath);
-            var store = new SessionStore(conn);
-            var stats = new StatsRepository(conn);
+            // 读写两侧共享同一把锁，保护同一 SqliteConnection 不被并发访问
+            var gate = new object();
+            var store = new SessionStore(conn, gate);
+            var stats = new StatsRepository(conn, gate: gate);
             var engine = new SceneRuleEngine(stats.GetSceneRules());
             var monitor = new NAudioDeviceMonitor();
             var scanner = new ForegroundScanner();
             var sessionManager = new SessionManager(store, monitor, engine, scanner);
-            var tray = new TrayApp(sessionManager, stats, monitor, scanner, new AutoStart());
+            var tray = new TrayApp(sessionManager, stats, monitor, scanner, engine, new AutoStart());
             tray.Start();
             Application.Run(new TrayContext(tray));
         }
         catch (Exception ex)
         {
+            ErrorLog.Write(ex);
             MessageBox.Show($"启动失败：{ex.Message}", "耳机使用记录",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }

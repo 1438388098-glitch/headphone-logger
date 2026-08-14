@@ -36,6 +36,8 @@ public sealed class SceneDraft
     public required IReadOnlySet<Scene> ConcurrentScenes { get; init; }
     public required string? AppName { get; init; }
     public required string? WindowTitle { get; init; }
+    /// <summary>草稿版本号：每次重建递增，UI 据此判断是否需要刷新气泡。</summary>
+    public int Version { get; init; }
 }
 
 /// <summary>前台窗口信息。</summary>

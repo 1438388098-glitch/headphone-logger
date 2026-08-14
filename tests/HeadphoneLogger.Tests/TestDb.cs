@@ -15,14 +15,20 @@ public sealed class TestDb : IDisposable
     public TestDb(Func<DateTime>? nowLocal = null)
     {
         Conn = AppDatabase.Open(_path);
-        Store = new SessionStore(Conn);
-        Stats = new StatsRepository(Conn, nowLocal);
+        var gate = new object(); // 读写侧共享同一把锁，与生产装配一致
+        Store = new SessionStore(Conn, gate);
+        Stats = new StatsRepository(Conn, nowLocal, gate);
     }
 
     public void Dispose()
     {
         Conn.Dispose();
-        if (File.Exists(_path))
-            File.Delete(_path);
+        // WAL 模式会产生 -wal/-shm 伴生文件，一并清理
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+        {
+            var f = _path + suffix;
+            if (File.Exists(f))
+                File.Delete(f);
+        }
     }
 }

@@ -13,6 +13,9 @@ public interface IForegroundScanner : IDisposable
     ForegroundInfo Current { get; }
 
     void Start();
+
+    /// <summary>会话空闲时暂停轮询（省 CPU）；恢复会话时再启用。启用即补一次采样。</summary>
+    void SetActive(bool active);
 }
 
 public sealed class ForegroundChangedEventArgs : EventArgs
@@ -30,6 +33,7 @@ public sealed class ForegroundScanner : IForegroundScanner
     private readonly System.Windows.Forms.Timer _timer;
     private readonly int _ownPid = Environment.ProcessId;
     private ForegroundInfo _current = new(null, null);
+    private bool _started;
 
     public event EventHandler<ForegroundChangedEventArgs>? ForegroundChanged;
     public ForegroundInfo Current => _current;
@@ -45,8 +49,26 @@ public sealed class ForegroundScanner : IForegroundScanner
 
     public void Start()
     {
+        if (_started)
+            return;
+        _started = true;
         Poll();
         _timer.Start();
+    }
+
+    /// <summary>会话空闲暂停轮询：省掉 1.5s 一次的 Win32 采样与进程查询。启用时补一次采样保证 Current 新鲜。</summary>
+    public void SetActive(bool active)
+    {
+        if (active)
+        {
+            Poll();
+            if (!_timer.Enabled)
+                _timer.Start();
+        }
+        else
+        {
+            _timer.Stop();
+        }
     }
 
     public void Dispose()

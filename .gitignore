@@ -4,9 +4,15 @@ obj/
 *.user
 *.suo
 
+# IDE
+.vs/
+.idea/
+
 # 运行时数据（本地数据库，不入库）
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 *.bak
 
 # 日志

@@ -26,6 +26,9 @@
   .card .k { font-size:11.5px; color:var(--muted); }
   .card .v { font-size:19px; font-weight:600; margin-top:2px; }
   .card .d { font-size:11px; margin-top:2px; color:var(--muted); }
+  .card.hero { border-color:var(--accent); background:linear-gradient(180deg,#fff,#f3f7fc); }
+  .card.hero .v { font-size:30px; color:var(--accent); margin-top:4px; }
+  .card.hero .d { font-size:12px; }
   .up { color:#5a8a5a; } .down { color:#b06050; }
   .two { display:flex; gap:12px; flex:1; min-height:0; }
   .chart { background:#fff; border:1px solid var(--rule); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; flex:1; min-width:0; }
@@ -45,9 +48,25 @@
   .editbar label { font-size:12px; color:var(--muted); }
   select, input[type=text] { font-family:inherit; font-size:12px; border:1px solid var(--rule); border-radius:6px; padding:2px 7px; background:#fff; }
   .editbar .tags { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; }
+  .filterbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:none; background:#fff; border:1px solid var(--rule); border-radius:8px; padding:8px 12px; }
+  .filterbar .foot { padding-top:0; margin-left:auto; }
+  .dayhdr td { background:#f7f5ef; color:var(--muted); font-weight:600; }
   .tblwrap { flex:1; overflow:auto; border:1px solid var(--rule); border-radius:8px; }
   .empty { color:var(--muted); padding:40px; text-align:center; }
   .foot { color:var(--muted); font-size:10.5px; flex:none; padding-top:6px; }
+  .toolbar { display:flex; align-items:center; gap:10px; flex:none; }
+  .toolbar .spacer { flex:1; }
+  .chip { background:#fdf3e3; color:#8a6a2a; border:1px solid #ead9b0; border-radius:14px; padding:3px 12px; font-size:12px; cursor:pointer; }
+  .chip:hover { background:#fbebc8; }
+  .chip b { color:#a5742a; }
+  .sw { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; cursor:pointer; }
+  .scenetbl { flex:none; margin-top:8px; border-top:1px solid var(--rule); font-size:12px; }
+  .scenetbl table { border:none; }
+  .scenetbl td, .scenetbl th { padding:3px 9px; border:none; }
+  .scenetbl .dur { text-align:right; font-variant-numeric:tabular-nums; }
+  .scenetbl .ovl { color:var(--muted); font-size:10.5px; }
+  tr.hl td { background:#fff7e0 !important; }
+  .hidden { display:none !important; }
 </style>
 </head>
 <body>
@@ -67,14 +86,21 @@
 <main>
   <section id="overview" class="pane">
     <div class="cards" id="cards"></div>
+    <div class="toolbar">
+      <span id="unconfirmedChip" class="chip hidden"></span>
+      <span class="spacer"></span>
+      <label class="sw"><input type="checkbox" id="onlyConfirmed"> 只看已确认</label>
+    </div>
     <div class="two">
-      <div class="chart"><h3>场景分配</h3><div class="hint" id="sceneHint"></div><div class="box" id="sceneChart"></div></div>
-      <div class="chart"><h3>每日时长（近 30 天）</h3><div class="box" id="dailyChart"></div></div>
+      <div class="chart"><h3>场景分配</h3><div class="hint" id="sceneHint"></div><div class="box" id="sceneChart"></div>
+        <div class="scenetbl" id="sceneTable"></div></div>
+      <div class="chart"><h3>今日各小时</h3><div class="box" id="todayChart"></div></div>
     </div>
   </section>
 
   <section id="heat" class="pane hidden">
     <div class="chart"><h3>时段分布（一周七天 × 24 小时，周一为起始）</h3><div class="box" id="heatChart"></div></div>
+    <div class="chart"><h3>每日时长（近 30 天）</h3><div class="box" id="dailyChart"></div></div>
   </section>
 
   <section id="device" class="pane hidden">
@@ -90,20 +116,42 @@
       <button class="btn" id="eSave" style="color:var(--accent)">保存</button>
       <button class="btn" id="eCancel">取消</button>
     </div>
+    <div class="filterbar">
+      <select id="fRange">
+        <option value="today">今天</option>
+        <option value="week">本周</option>
+        <option value="month">本月</option>
+        <option value="custom">自定义</option>
+        <option value="all" selected>全部</option>
+      </select>
+      <input type="date" id="fFrom" class="hidden">
+      <span id="fToSep" class="hidden">至</span>
+      <input type="date" id="fTo" class="hidden">
+      <select id="fScene"><option value="">全部场景</option></select>
+      <select id="fDevice"><option value="">全部设备</option></select>
+      <select id="fConfirm">
+        <option value="">全部确认状态</option>
+        <option value="1">已确认</option>
+        <option value="0">未确认</option>
+      </select>
+      <input type="text" id="fSearch" placeholder="搜索 应用 / 标题 / 备注">
+      <button class="btn" id="fExport">导出 CSV</button>
+      <span class="foot" id="foot"></span>
+    </div>
     <div class="tblwrap">
       <table id="segTable">
         <thead><tr><th>开始时间</th><th>时长</th><th>场景</th><th>应用 / 标题</th><th>确认</th><th>备注</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
-    <div class="foot" id="foot"></div>
   </section>
 </main>
 
 <script>
 const SCENE = { Music:'音乐', Video:'视频', Game:'游戏', Course:'网课', Meeting:'会议', Coding:'编程', Other:'其他', Unmarked:'未标注' };
 const SCENE_KEYS = Object.keys(SCENE);
-let editingId = null, lastSegments = [];
+let editingId = null, lastSegments = [], allData = null;
+const filter = { range:'all', scene:'', device:'', confirm:'', search:'', from:null, to:null };
 
 function fmt(sec) {
   sec = Math.round(sec || 0);
@@ -120,8 +168,8 @@ function renderCards(o) {
     {k:'本周', v:fmt(o.weekSec), d:diff(o.weekSec, o.prevWeekSec, '较上周')},
     {k:'本月', v:fmt(o.monthSec), d:diff(o.monthSec, o.prevMonthSec, '较上月')},
   ];
-  document.getElementById('cards').innerHTML = items.map(c =>
-    `<div class="card"><div class="k">${c.k}</div><div class="v">${c.v}</div><div class="d">${c.d}</div></div>`).join('');
+  document.getElementById('cards').innerHTML = items.map((c, i) =>
+    `<div class="card${i === 0 ? ' hero' : ''}"><div class="k">${c.k}</div><div class="v">${c.v}</div><div class="d">${c.d}</div></div>`).join('');
 }
 function diff(cur, prev, label) {
   if (prev <= 0) return label + ' —';
@@ -130,6 +178,7 @@ function diff(cur, prev, label) {
 }
 
 const sceneChart = echarts.init(document.getElementById('sceneChart'));
+const todayChart = echarts.init(document.getElementById('todayChart'));
 const dailyChart = echarts.init(document.getElementById('dailyChart'));
 const heatChart = echarts.init(document.getElementById('heatChart'));
 const deviceChart = echarts.init(document.getElementById('deviceChart'));
@@ -154,6 +203,14 @@ function render(data) {
     series: [{ type:'bar', data: data.daily.map(d => d.sec), itemStyle:{color:'#6f8fbf', borderRadius:[3,3,0,0]}, barMaxWidth:16 }]
   });
 
+  todayChart.setOption({
+    tooltip: { formatter: p => `${p.name} 时 — ${fmt(p.value)}` },
+    grid: { left: 8, right: 16, top: 6, bottom: 22, containLabel:true },
+    xAxis: { type:'category', data: Array.from({length:24}, (_,i)=>i+'时'), axisLabel:{fontSize:10, interval:3} },
+    yAxis: { type:'value', splitLine:{lineStyle:{color:'#eee'}} },
+    series: [{ type:'bar', data: data.todayHourly.map(h => h.sec), itemStyle:{color:'#5a7ba6', borderRadius:[3,3,0,0]}, barMaxWidth:16 }]
+  });
+
   const W = ['周一','周二','周三','周四','周五','周六','周日'];
   const cells = data.heatmap.map(c => [c.hour, c.weekday, c.sec]);
   heatChart.setOption({
@@ -171,25 +228,135 @@ function render(data) {
     yAxis: { type:'category', data: data.devices.map(d => d.name), inverse:true, axisLabel:{fontSize:11} },
     series: [{ type:'bar', data: data.devices.map(d => d.sec), barWidth:'50%', itemStyle:{color:'#6f8fbf', borderRadius:[0,4,4,0]} }]
   });
+  populateFilters(data);
+  renderSceneTable(data.sceneAllocation);
+  renderUnconfirmedChip(data.unconfirmed);
+  allData = data;
   renderTable(data.segments);
+}
+
+function renderUnconfirmedChip(n) {
+  const chip = document.getElementById('unconfirmedChip');
+  if (n > 0) {
+    chip.classList.remove('hidden');
+    chip.innerHTML = `有 <b>${n}</b> 段待核对，点击查看`;
+    chip.onclick = () => {
+      document.getElementById('fConfirm').value = '0';
+      readFilter();
+      renderTable(lastSegments);
+      switchTab('detail');
+    };
+  } else {
+    chip.classList.add('hidden');
+  }
+}
+
+function renderSceneTable(sa) {
+  // 场景时长表：每行时长 + 各场景之和与总时长的重叠注解
+  let html = '<table><thead><tr><th>场景</th><th class="dur">时长</th><th class="ovl"></th></tr></thead><tbody>';
+  for (const s of sa.perScene) {
+    const mainShare = sa.perScene.length && sa.totalSec > 0
+      ? Math.round(s.sec / sa.totalSec * 100) : 0;
+    html += `<tr><td>${SCENE[s.scene] || s.scene}</td><td class="dur">${fmt(s.sec)}</td><td class="ovl">${mainShare}%</td></tr>`;
+  }
+  html += `</tbody></table>`;
+  document.getElementById('sceneTable').innerHTML = html;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('hidden', p.id !== name));
+  const charts = { overview:[todayChart, sceneChart], heat:[heatChart, dailyChart], device:[deviceChart], detail:[] }[name] || [];
+  charts.forEach(c => setTimeout(() => c.resize(), 0));
 }
 
 function renderTable(segs) {
   const tbody = document.querySelector('#segTable tbody');
-  document.getElementById('foot').textContent = segs.length ? `共 ${segs.length} 条` : '';
-  if (!segs.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty">还没有记录。插上耳机开始记录吧。</div></td></tr>'; return; }
-  tbody.innerHTML = segs.map(s => {
-    const tags = (s.scenes.length ? s.scenes : [s.scene]).map(t => `<span class="tag${t==='Unmarked'?' un':''}">${SCENE[t]||t}</span>`).join('');
-    return `<tr>
-      <td>${shortDate(s.start)}</td>
-      <td>${fmt(s.durationSec)}</td>
-      <td>${SCENE[s.scene]||s.scene}</td>
-      <td>${s.app||''}${s.title ? ' · ' + esc(s.title) : ''}</td>
-      <td>${s.confirmed ? '✓' : '—'}</td>
-      <td>${s.note ? esc(s.note) : ''}</td>
-      <td><button class="btn" onclick="editSeg(${s.id})">编辑</button></td>
-    </tr>`;
-  }).join('');
+  const list = filterSegs(segs);
+  document.getElementById('foot').textContent = list.length ? `共 ${list.length} 条` : '';
+  if (!list.length) {
+    const msg = segs.length ? '没有匹配的记录' : '还没有记录。插上耳机开始记录吧。';
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty">${msg}</div></td></tr>`;
+    return;
+  }
+  // 按本地日分组，组内按时间倒序，每天显示小计
+  const groups = new Map();
+  for (const s of list) {
+    const d = new Date(s.start);
+    const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+  const keys = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+  let html = '';
+  for (const key of keys) {
+    const daySegs = groups.get(key).sort((a, b) => new Date(b.start) - new Date(a.start));
+    const daySec = daySegs.reduce((sum, s) => sum + (s.durationSec || 0), 0);
+    const [y, m, d] = key.split('-').map(Number);
+    html += `<tr class="dayhdr"><td colspan="7">${y}年${m}月${d}日 · 共 ${fmt(daySec)}</td></tr>`;
+    html += daySegs.map(segRow).join('');
+  }
+  tbody.innerHTML = html;
+}
+
+function segTags(s) { return (s.scenes.length ? s.scenes : [s.scene]); }
+
+function segRow(s) {
+  const tags = segTags(s).map(t => `<span class="tag${t==='Unmarked'?' un':''}">${SCENE[t]||t}</span>`).join('');
+  return `<tr data-id="${s.id}"${s.id === editingId ? ' class="hl"' : ''}>
+    <td>${shortDate(s.start)}</td>
+    <td>${fmt(s.durationSec)}</td>
+    <td>${SCENE[s.scene]||s.scene}</td>
+    <td>${s.app ? esc(s.app) : ''}${s.title ? ' · ' + esc(s.title) : ''}</td>
+    <td>${s.confirmed ? '✓' : '—'}</td>
+    <td>${s.note ? esc(s.note) : ''}</td>
+    <td>
+      <button class="btn" onclick="editSeg(${s.id})">编辑</button>
+      ${s.app && s.app !== '未知' ? `<button class="btn" onclick="pinRule('${s.app}', '${s.scene}')" title="以后此应用都按该场景记录">固定场景</button>` : ''}
+    </td>
+  </tr>`;
+}
+
+function pinRule(app, scene) {
+  if (!confirm(`确定把「${app}」固定为「${SCENE[scene]||scene}」？此后该应用的所有记录都按此场景。`)) return;
+  send({type:'setRule', app, scene});
+}
+
+function filterSegs(segs) {
+  const now = new Date();
+  let from = null, to = null;
+  if (filter.range === 'today') from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  else if (filter.range === 'week') {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    from.setDate(from.getDate() - ((now.getDay() + 6) % 7)); // 周一起
+  }
+  else if (filter.range === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1);
+  else if (filter.range === 'custom') {
+    if (filter.from) { from = new Date(filter.from + 'T00:00:00'); to = new Date(filter.to + 'T23:59:59'); }
+  }
+  const onlyConfirmed = document.getElementById('onlyConfirmed').checked;
+  const q = filter.search.toLowerCase();
+  return segs.filter(s => {
+    const d = new Date(s.start);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (filter.scene && !segTags(s).includes(filter.scene)) return false;
+    if (filter.device && (s.device || '未知设备') !== filter.device) return false;
+    if (filter.confirm !== '' && String(s.confirmed ? 1 : 0) !== filter.confirm) return false;
+    if (onlyConfirmed && !s.confirmed) return false;
+    if (q && !((s.app || '') + ' ' + (s.title || '') + ' ' + (s.note || '')).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function populateFilters(data) {
+  const fScene = document.getElementById('fScene');
+  fScene.innerHTML = '<option value="">全部场景</option>' + SCENE_KEYS.map(k => `<option value="${k}">${SCENE[k]}</option>`).join('');
+  fScene.value = filter.scene;
+  const devs = [...new Set(data.segments.map(s => s.device || '未知设备'))].sort();
+  const fDevice = document.getElementById('fDevice');
+  fDevice.innerHTML = '<option value="">全部设备</option>' + devs.map(n => `<option value="${n}">${esc(n)}</option>`).join('');
+  fDevice.value = filter.device;
 }
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
@@ -203,34 +370,85 @@ function editSeg(id) {
     `<label style="display:flex;gap:3px;align-items:center;font-size:12px"><input type="checkbox" value="${k}" ${(s.scenes.length?s.scenes:[s.scene]).includes(k)?'checked':''}>${SCENE[k]}</label>`).join('');
   document.getElementById('eNote').value = s.note || '';
   document.getElementById('eConfirmed').checked = !!s.confirmed;
+  renderTable(lastSegments); // 高亮编辑行
+  const row = document.querySelector(`#segTable tr[data-id="${id}"]`);
+  if (row) row.scrollIntoView({ block: 'nearest' });
 }
 document.getElementById('eSave').onclick = () => {
   if (editingId == null) return;
   const scene = document.getElementById('eScene').value;
   const scenes = Array.from(document.querySelectorAll('#eScenes input:checked')).map(i => i.value);
   if (!scenes.includes(scene)) scenes.push(scene);
-  send({type:'update', id:editingId, scene, scenes,
+  const id = editingId;
+  document.getElementById('editbar').classList.remove('visible'); editingId = null;
+  send({type:'update', id, scene, scenes,
     note:document.getElementById('eNote').value.trim() || null,
     confirmed:document.getElementById('eConfirmed').checked});
 };
 document.getElementById('eCancel').onclick = () => { document.getElementById('editbar').classList.remove('visible'); editingId = null; };
 
+/* 明细筛选 */
+function readFilter() {
+  filter.range = document.getElementById('fRange').value;
+  filter.scene = document.getElementById('fScene').value;
+  filter.device = document.getElementById('fDevice').value;
+  filter.confirm = document.getElementById('fConfirm').value;
+  filter.from = document.getElementById('fFrom').value || null;
+  filter.to = document.getElementById('fTo').value || null;
+}
+function toggleCustomRange() {
+  const custom = document.getElementById('fRange').value === 'custom';
+  document.getElementById('fFrom').classList.toggle('hidden', !custom);
+  document.getElementById('fTo').classList.toggle('hidden', !custom);
+  document.getElementById('fToSep').classList.toggle('hidden', !custom);
+}
+['fRange', 'fScene', 'fDevice', 'fConfirm'].forEach(id =>
+  document.getElementById(id).addEventListener('change', () => { readFilter(); toggleCustomRange(); renderTable(lastSegments); }));
+document.getElementById('fFrom').addEventListener('change', () => { readFilter(); renderTable(lastSegments); });
+document.getElementById('fTo').addEventListener('change', () => { readFilter(); renderTable(lastSegments); });
+document.getElementById('fSearch').addEventListener('input', () => {
+  filter.search = document.getElementById('fSearch').value.trim();
+  renderTable(lastSegments);
+});
+document.getElementById('onlyConfirmed').addEventListener('change', () => renderTable(lastSegments));
+document.getElementById('fExport').addEventListener('click', () => {
+  readFilter();
+  let from = null, to = null;
+  if (filter.range === 'today') from = new Date().toLocaleDateString('sv');
+  else if (filter.range === 'week') {
+    const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    from = d.toLocaleDateString('sv');
+  }
+  else if (filter.range === 'month') {
+    const d = new Date(); d.setDate(1); from = d.toLocaleDateString('sv');
+  }
+  else if (filter.range === 'custom') { from = filter.from; to = filter.to; }
+  send({type:'export', from, to});
+});
+toggleCustomRange();
+
 /* tab 切换 */
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('hidden', p.id !== b.dataset.tab));
-  const charts = { overview:[sceneChart, dailyChart], heat:[heatChart], device:[deviceChart], detail:[] }[b.dataset.tab] || [];
+  const charts = { overview:[todayChart, sceneChart], heat:[heatChart, dailyChart], device:[deviceChart], detail:[] }[b.dataset.tab] || [];
   charts.forEach(c => setTimeout(() => c.resize(), 0));
 }));
 
 window.chrome.webview.addEventListener('message', e => {
   // 部分 WebView2 版本直接把对象放进 e.data，部分给 JSON 字符串，两种都兼容
   const msg = (typeof e.data === 'string') ? JSON.parse(e.data) : e.data;
-  if (msg.type === 'data') { lastSegments = msg.data.segments || []; render(msg.data); }
-  document.getElementById('editbar').classList.remove('visible'); editingId = null;
+  if (msg.type === 'data') {
+    lastSegments = msg.data.segments || [];
+    render(msg.data);
+  }
+  // M6：编辑态（editbar 可见且未保存）不因后台刷新被清空；只有保存/取消/自己关闭才结束编辑
+  if (!document.getElementById('editbar').classList.contains('visible')) {
+    editingId = null;
+  }
 });
 document.addEventListener('DOMContentLoaded', () => send({type:'load'}));
-window.addEventListener('resize', () => [sceneChart, dailyChart, heatChart, deviceChart].forEach(c => c.resize()));
+window.addEventListener('resize', () => [todayChart, sceneChart, dailyChart, heatChart, deviceChart].forEach(c => c.resize()));
 </script>
 </body>
 </html>

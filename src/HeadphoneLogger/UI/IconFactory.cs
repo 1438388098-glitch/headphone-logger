@@ -46,6 +46,50 @@ internal static class IconFactory
         }
     }
 
+    public static Icon CreateRecordingIcon()
+    {
+        using var bmp = new Bitmap(32, 32);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+
+            // 圆角底：录音态用更醒目的墨绿
+            using var bg = new GraphicsPath();
+            bg.AddArc(1, 1, 8, 8, 180, 90);
+            bg.AddArc(23, 1, 8, 8, 270, 90);
+            bg.AddArc(23, 23, 8, 8, 0, 90);
+            bg.AddArc(1, 23, 8, 8, 90, 90);
+            bg.CloseFigure();
+            using var brush = new SolidBrush(Color.FromArgb(52, 120, 78));
+            g.FillPath(brush, bg);
+
+            // 头梁弧线
+            using var pen = new Pen(Color.White, 4f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawArc(pen, 8, 6, 16, 20, 180, 180);
+
+            // 左右耳罩
+            using var cup = new SolidBrush(Color.White);
+            FillRoundRect(g, cup, 5, 17, 8, 10, 3);
+            FillRoundRect(g, cup, 19, 17, 8, 10, 3);
+
+            // 录音红点
+            using var dot = new SolidBrush(Color.FromArgb(220, 70, 60));
+            g.FillEllipse(dot, 25, 4, 6, 6);
+        }
+
+        var hicon = bmp.GetHicon();
+        try
+        {
+            using var temp = Icon.FromHandle(hicon);
+            return (Icon)temp.Clone(); // Clone 持有独立句柄，随 NotifyIcon 生命周期释放
+        }
+        finally
+        {
+            DestroyIcon(hicon);
+        }
+    }
+
     private static void FillRoundRect(Graphics g, Brush brush, int x, int y, int w, int h, int r)
     {
         using var path = new GraphicsPath();
