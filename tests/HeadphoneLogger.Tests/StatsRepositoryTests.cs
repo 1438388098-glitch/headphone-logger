@@ -64,6 +64,31 @@ public sealed class StatsRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void SceneAllocation_TimeRangeFiltersByLocalDay()
+    {
+        // 固定时钟 2026-08-14；四天的段，验证最近一天/一周/一月的切窗口径
+        AddSegment(new DateTime(2026, 8, 14, 9, 0, 0), new DateTime(2026, 8, 14, 10, 0, 0), Scene.Game);
+        AddSegment(new DateTime(2026, 8, 13, 9, 0, 0), new DateTime(2026, 8, 13, 10, 0, 0), Scene.Video);
+        AddSegment(new DateTime(2026, 8, 7, 9, 0, 0), new DateTime(2026, 8, 7, 10, 0, 0), Scene.Course);
+        AddSegment(new DateTime(2026, 8, 5, 9, 0, 0), new DateTime(2026, 8, 5, 10, 0, 0), Scene.Music);
+
+        // 最近一天：仅 8/14（对应 range=day：from=now, to=now+1d）
+        var day = _stats.GetSceneAllocation(new DateTime(2026, 8, 14), new DateTime(2026, 8, 15));
+        Assert.Equal(3600, day.TotalSec);
+        Assert.Single(day.PerScene);
+
+        // 最近一周：8/8~8/14，含 8/14 + 8/13（对应 range=week：from=now-6d, to=now+1d）
+        var week = _stats.GetSceneAllocation(new DateTime(2026, 8, 8), new DateTime(2026, 8, 15));
+        Assert.Equal(7200, week.TotalSec);
+        Assert.Equal(2, week.PerScene.Count);
+
+        // 最近一月：7/16~8/14，全部 4 天（对应 range=month：from=now-29d, to=now+1d）
+        var month = _stats.GetSceneAllocation(new DateTime(2026, 7, 16), new DateTime(2026, 8, 15));
+        Assert.Equal(14400, month.TotalSec);
+        Assert.Equal(4, month.PerScene.Count);
+    }
+
+    [Fact]
     public void LocalDayBoundary_AttributesByLocalStartDate()
     {
         // 本地 00:30 的段（UTC 前一日 16:30），必须记入本地「今天」

@@ -21,6 +21,7 @@ public sealed class StatsWindow : Form
     private readonly System.Windows.Forms.Timer _refresh = new() { Interval = 30_000 };
     private int _refreshing; // 防重入：慢查询进行中跳过本次触发
     private SynchronizationContext? _syncContext;
+    private string _sceneRange = "all"; // 场景分配时间范围：all / day / week / month
 
     public StatsWindow(StatsRepository stats, ISceneRuleEngine engine)
     {
@@ -96,6 +97,13 @@ public sealed class StatsWindow : Form
                     break;
                 case "setRule":
                     HandleSetRule(root);
+                    PostData();
+                    break;
+                case "sceneRange":
+                    // 场景分配时间范围：切换后仅重算场景分配，其余数据保持不变
+                    _sceneRange = root.TryGetProperty("range", out var r) && r.ValueKind == JsonValueKind.String
+                        ? r.GetString() ?? "all"
+                        : "all";
                     PostData();
                     break;
                 case "setTheme":
@@ -240,12 +248,35 @@ public sealed class StatsWindow : Form
         }
     }
 
+    /// <summary>场景分配时间范围起点（本地日）。与 GetSceneAllocation 按日切分口径一致。</summary>
+    private DateTime SceneFrom
+    {
+        get
+        {
+            var now = DateTime.Now.Date;
+            return _sceneRange switch
+            {
+                "day" => now,
+                "week" => now.AddDays(-6),
+                "month" => now.AddDays(-29),
+                _ => new DateTime(2000, 1, 1),
+            };
+        }
+    }
+
+    /// <summary>场景分配时间范围终点（开区间，不包含）。</summary>
+    private DateTime SceneTo => _sceneRange switch
+    {
+        "day" or "week" or "month" => DateTime.Now.Date.AddDays(1),
+        _ => new DateTime(2100, 1, 1),
+    };
+
     private object BuildPayload()
     {
         var from = new DateTime(2000, 1, 1);
         var to = new DateTime(2100, 1, 1);
         var overview = _stats.GetOverview();
-        var sceneAlloc = _stats.GetSceneAllocation(from, to);
+        var sceneAlloc = _stats.GetSceneAllocation(SceneFrom, SceneTo);
         var daily = _stats.GetDailyDurations(30);
         var todayHourly = _stats.GetTodayHourly();
         var heatmap = _stats.GetHourlyHeatmap();
@@ -259,6 +290,7 @@ public sealed class StatsWindow : Form
             dark = App.ThemeSettings.Dark,
             data = new
             {
+                sceneRange = _sceneRange,
                 overview = new
                 {
                     todaySec = overview.TodaySec,

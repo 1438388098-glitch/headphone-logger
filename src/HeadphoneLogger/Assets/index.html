@@ -120,7 +120,16 @@
     </div>
     <div class="two">
       <div class="chart"><h3>场景分配</h3><div class="hint" id="sceneHint"></div><div class="box" id="sceneChart"></div>
-        <div class="scenetbl" id="sceneTable"></div></div>
+        <div class="scenetbl" id="sceneTable"></div>
+        <div style="display:flex;gap:8px;align-items:center;padding-top:8px">
+          <label for="sceneRange" style="font-size:12px;color:var(--muted)">时间范围</label>
+          <select id="sceneRange">
+            <option value="all" selected>全部</option>
+            <option value="day">最近一天</option>
+            <option value="week">最近一周</option>
+            <option value="month">最近一月</option>
+          </select>
+        </div></div>
       <div class="chart"><h3>今日各小时</h3><div class="box" id="todayChart"></div></div>
     </div>
   </section>
@@ -232,7 +241,8 @@ function render(data) {
 
   const sa = data.sceneAllocation;
   const th = chartTheme();
-  document.getElementById('sceneHint').textContent = `总 ${fmt(sa.totalSec)}，并发场景重复计入`;
+  const rangeLabel = { all:'全部', day:'最近一天', week:'最近一周', month:'最近一月' }[data.sceneRange] || '全部';
+  document.getElementById('sceneHint').textContent = `${rangeLabel} · 总 ${fmt(sa.totalSec)}，并发场景重复计入`;
   sceneChart.setOption({
     ...chartAnimation,
     tooltip: { trigger:'item', formatter: p => `${p.name}<br>${fmt(p.value)}（${p.percent}%）` },
@@ -461,6 +471,7 @@ document.getElementById('fSearch').addEventListener('input', () => {
   renderTable(lastSegments);
 });
 document.getElementById('onlyConfirmed').addEventListener('change', () => renderTable(lastSegments));
+document.getElementById('sceneRange').addEventListener('change', e => send({type:'sceneRange', range: e.target.value}));
 document.getElementById('fExport').addEventListener('click', () => {
   readFilter();
   let from = null, to = null;
@@ -509,6 +520,7 @@ window.chrome.webview.addEventListener('message', e => {
   const msg = (typeof e.data === 'string') ? JSON.parse(e.data) : e.data;
   if (msg.type === 'data') {
     lastSegments = msg.data.segments || [];
+    if (msg.data.sceneRange) document.getElementById('sceneRange').value = msg.data.sceneRange;
     if (msg.dark !== undefined) initTheme(msg.dark);
     render(msg.data);
   }
