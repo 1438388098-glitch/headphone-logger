@@ -15,7 +15,8 @@ public sealed class SessionManagerTests : IDisposable
 
     public SessionManagerTests()
     {
-        _db = new TestDb();
+        // StatsRepository 必须与 SessionManager 共用同一时钟，否则「今日/本周」等聚合按真实日期计算，日期敏感测试会随系统日期翻页而挂
+        _db = new TestDb(() => _clock.Now.LocalDateTime);
         _sm = new SessionManager(_db.Store, _monitor, _engine, _scanner, () => _clock.Now);
     }
 
