@@ -13,7 +13,7 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011-blue)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
-[![Tests](https://img.shields.io/badge/Tests-62%20passing-brightgreen)](https://github.com/)
+[![Tests](https://img.shields.io/badge/Tests-65%20passing-brightgreen)](https://github.com/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](#contributing)
 
 ---
@@ -36,7 +36,7 @@
 | 💬 **气泡确认** | 跨场景切换且**切换到的窗口正在发声**才弹气泡：`✓ 是` / `✕ 让我改` / `稍后标`，3 分钟无操作自动落库 |
 | 🏷️ **并发场景** | 一个段多个标签：听歌 + 打游戏 = 一个段两个标签，重叠如实呈现（场景之和可大于总时长） |
 | 🎤 **分耳机统计** | 按 Windows 默认输出设备归属会话，看清每副耳机各用了多久 |
-| 📊 **统计窗口** | 总览（卡片 + 场景饼图/时长表 + 今日各小时）· 时段（7×24 热力图 + 30 天每日）· 设备 · 明细（多条件筛选 + 编辑 + 导出） |
+| 📊 **统计窗口** | 总览（卡片 + 场景饼图/时长表 + 今日各小时）· 时段（7×24 热力图 + 30 天每日）· 设备 · 明细（多条件筛选 + 编辑 + 删除 + 导出） |
 | 🛡️ **防误记** | 拔除去抖（休眠唤醒不切会话）、音频迟滞（切歌不碎段）、气泡取消补开段不空洞、误插 <60s 自动丢弃 |
 
 ## 截图
@@ -80,7 +80,7 @@ dotnet run --project src/HeadphoneLogger
 dotnet test
 ```
 
-62 个测试，覆盖：场景规则引擎、会话状态机（假音频设备/前台驱动）、统计聚合（并发场景重叠、本地日界、设备分组）。
+65 个测试，覆盖：场景规则引擎、会话状态机（假音频设备/前台驱动）、统计聚合（并发场景重叠、本地日界、设备分组）、明细编辑/删除。
 
 ### 使用
 
@@ -172,6 +172,7 @@ headphone-logger/
 
 - [x] 有声音才记录（无声切换零记录）
 - [x] 明细筛选（时间/场景/设备/确认状态/关键词 + 自定义日期）
+- [x] 明细编辑与删除（改主场景/并发标签/备注/确认状态；误记可删）
 - [x] 待核对治理（chip 入口 + 只看已确认）
 - [x] CSV 导出与数据文件夹入口
 - [x] 规则热更新（明细「固定场景」）
