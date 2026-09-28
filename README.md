@@ -1,5 +1,9 @@
 # 耳机使用记录器（Headphone Logger）
 
+> **English**: A Windows tray app that automatically tracks how long you wear your headphones each day, which pair, and in what scenario (music / video / gaming / online class / meetings / coding).
+> It records only while sound is playing, tells headphones apart by output device, tags concurrent scenes (e.g., music + gaming in one session), confirms scene switches with a bubble, and renders offline WebView2 + ECharts statistics — built on .NET 10 with 62 unit tests.
+> **Run**: `dotnet run --project src/HeadphoneLogger` on Windows 11 (requires .NET 10 SDK); run tests with `dotnet test`.
+
 > Windows 常驻后台，自动记录你**每天戴了多久耳机、哪副耳机、在做什么场景**（音乐 / 视频 / 游戏 / 网课 / 会议 / 编程）。
 
 <p align="center">
