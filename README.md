@@ -13,7 +13,7 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011-blue)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
-[![Tests](https://img.shields.io/badge/Tests-65%20passing-brightgreen)](https://github.com/)
+[![Tests](https://img.shields.io/badge/Tests-63%20passing-brightgreen)](https://github.com/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](#contributing)
 
 ---
@@ -80,7 +80,7 @@ dotnet run --project src/HeadphoneLogger
 dotnet test
 ```
 
-65 个测试，覆盖：场景规则引擎、会话状态机（假音频设备/前台驱动）、统计聚合（并发场景重叠、本地日界、设备分组）、明细编辑/删除。
+63 个测试，覆盖：场景规则引擎、会话状态机（假音频设备/前台驱动）、统计聚合（并发场景重叠、本地日界、设备分组）、明细编辑/删除。
 
 ### 使用
 
